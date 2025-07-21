@@ -1,0 +1,8 @@
+sonar.exclusions=**/store/**, store/**, **/*.spec.*, **/*.layout.*, **/mock-server/**, **/setup/**, **/*config*, **/DeviceProtectionSelector/protectionPage.module.css, Dockerfile, scripts/**, public/nsa/ui/newrelic/**, **/styledComponents.*, templates/**, **/common/components/**, **/middleware.ts, app/common/fonts/**, app/componentManager/**, app/**/layout.tsx
+sonar.coverage.exclusions=jest.setup.js, **/store/**, store/**, **/*.spec.*, **/*.layout.* , **/*config*, services/**, lighthouse/**, scripts/**, Dockerfile, public/nsa/ui/newrelic/**, **/styledComponents.*, templates/**, **/common/components/**, jest.config.js, **/tests/**, newrelic.cjs, **/middleware.ts, app/common/fonts/**, app/componentManager/**, app/**/layout.tsx
+sonar.cpd.exclusions=
+
+
+
+C:\Users\vinoma1\simpleMobile\onevz-value-digital-mfe-account\components\Footer\styles
+ 
