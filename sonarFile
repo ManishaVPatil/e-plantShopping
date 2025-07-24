@@ -5,4 +5,41 @@ sonar.cpd.exclusions=
 
 
 C:\Users\vinoma1\simpleMobile\onevz-value-digital-mfe-account\components\Footer\styles
- 
+
+
+const buttonEnable = (isBtnDisable) => {
+    let enableVal;
+    if (isBtnDisable) {
+      if (confirmPswrdVal && confirmPasswrordvalidationMessage) {
+        enableVal = emailVal?.trim() !== "" &&
+          pswrdVal?.trim() !== "" &&
+          confirmPswrdVal?.trim() !== "" &&
+          pinVal?.trim() !== "" &&
+          emailvalidationMessage?.trim() === "" &&
+          passwrordvalidationMessage?.trim() === "" &&
+          confirmPasswrordvalidationMessage?.trim() === "" &&
+          pinvalidationMessage?.trim() === "" &&
+          pswrdVal?.trim().length >= 8 &&
+          (isCaptchaValid || props.scriptingJson[constantValues.LBL_REGRESSION_ENABLE_VERIFY] == constantValues.REGRESSION_ENABLE_VERIFY_VALUE) &&
+          isAgeChecked  
+        setButtonEnable(enableVal)
+        return enableVal;
+      } else {
+        enableVal = emailVal?.trim() !== "" &&
+          pswrdVal?.trim() !== "" &&
+          pinVal?.trim() !== "" &&
+          emailvalidationMessage?.trim() === "" &&
+          passwrordvalidationMessage?.trim() === "" &&
+          pinvalidationMessage?.trim() === "" &&
+          pswrdVal?.trim().length >= 8 &&
+          (isCaptchaValid || props.scriptingJson[constantValues.LBL_REGRESSION_ENABLE_VERIFY] == constantValues.REGRESSION_ENABLE_VERIFY_VALUE) &&
+          isAgeChecked;
+        setButtonEnable(enableVal);
+        return enableVal;
+      }
+    } else {
+      setButtonEnable(true);
+      return true;
+    }
+  };
+ props?.createAccountFields
