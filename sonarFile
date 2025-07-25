@@ -6,26 +6,60 @@ sonar.cpd.exclusions=
 
 C:\Users\vinoma1\simpleMobile\onevz-value-digital-mfe-account\components\Footer\styles
 
-const checkBirthdayVal = (event) => {
-    let birthDateValueLength = event?.target?.value?.length;
-    const ele = document.querySelector('#birthDateInfoerror');
-    
-      setBirthDateValid(false);
-      if(ele){
-          document.querySelector('#birthDateInfoerror').classList.add('d-none');
-      }
-    if(birthDateValueLength>0){
-      if(birthDateValueLength!==4&&birthDateValueLength!==5){
-        setBirthDateValid(true);
-        if(ele){
-          document.querySelector('#birthDateInfoerror').classList.remove('d-none');
+isInputProvided = () => {
+        const { createAccountFormInfo } = this.props;
+
+        // Check if createAccountFormInfo exists and has the required fields
+        if (
+            !createAccountFormInfo ||
+            !createAccountFormInfo["emailAddress"] ||
+            !createAccountFormInfo["password"] ||
+            !createAccountFormInfo["securityPin"]
+        ) {
+            return false; // Return false if any of the fields are undefined
         }
-      }
-      if(birthDateValueLength===4 && event?.target?.value?.charAt(3)==='0'){
-        setBirthDateValid(true);
-        if(ele){
-          document.querySelector('#birthDateInfoerror').classList.remove('d-none');
+        const emailValue = createAccountFormInfo["emailAddress"]?.value || '';
+        const passwordValue = createAccountFormInfo["password"]?.value || '';
+        const pinValue = createAccountFormInfo["securityPin"]?.value || '';
+        const confirmPinValue = createAccountFormInfo["securityPin1"]?.value || '';
+
+        if (createAccountFormInfo) {
+            if (this.state.consentTbvCheckbox) {
+                if (createAccountFormInfo?.password?.isValid === false) {
+                    return false;
+                }
+            }
+            if (createAccountFormInfo?.securityPin?.isValid === false || createAccountFormInfo?.securityPin1?.isValid === false ||
+                createAccountFormInfo?.securityPin?.value !== createAccountFormInfo?.securityPin1?.value
+            ) {
+                return false;
+            }
+
         }
-      }
+
+        if (this.state.consentTbvCheckbox) {
+            return emailValue !== '' && passwordValue !== '' && pinValue !== '';
+        }
+        // Check if all fields have values
+        else { return emailValue !== '' && pinValue !== '' && confirmPinValue !== '' && pinValue === confirmPinValue; }
+    };
+
+    isAdditionalInfoProvided=()=>{
+        const {
+
+            phoneNumber
+        } = this.props?.shippingInfo || {};
+        const { zipCode: { isValid: zipValid } = { isValid: false } } =
+            this.props?.shippingAddressInfo || {};
+        const isBirthDateValid = this.state.birthDateValid;
+        const phoneLengthInvalid = phoneNumber && phoneNumber.length !== 14;
+        // Logic to decide new value for ctnBtnDisable
+        let shouldDisable =
+            !(zipValid) ||
+            phoneLengthInvalid ||
+            isBirthDateValid;
+        // Prevent infinite loop by checking if value is really changing
+        if (this.state.ctnBtnDisable !== shouldDisable) {
+            this.setState({ ctnBtnDisable: shouldDisable });
+        }
     }
-  }
