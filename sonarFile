@@ -6,40 +6,35 @@ sonar.cpd.exclusions=
 
 C:\Users\vinoma1\simpleMobile\onevz-value-digital-mfe-account\components\Footer\styles
 
+componentDidUpdate(prevProps, prevState) {
+        if (prevProps.validRealEmailCheck != this.props.validRealEmailCheck && this.props.validRealEmailCheck) {
+            if (this.state.emailValidationData) {
+                this.registerAccountHandler(this.state.emailValidationData);
+            } else {
+                this.registerAccountHandler();
+            }
+        }
+        const { firstName: { isValid: fnameIsValid } = { isValid: false }, lastName: { isValid: lnameIsValid } = { isValid: false } } = this.props?.shippingInfo || {}
+        const { zipCode: { isValid: zipValid } = { isValid: false } } =this.props?.shippingAddressInfo || {}
+        const phoneNumber = this.props?.shippingInfo?.phoneNumber?.value;
 
-const buttonEnable = (isBtnDisable) => {
-    let enableVal;
-    if (isBtnDisable) {
-      if (confirmPswrdVal && confirmPasswrordvalidationMessage) {
-        enableVal = emailVal?.trim() !== "" &&
-          pswrdVal?.trim() !== "" &&
-          confirmPswrdVal?.trim() !== "" &&
-          pinVal?.trim() !== "" &&
-          emailvalidationMessage?.trim() === "" &&
-          passwrordvalidationMessage?.trim() === "" &&
-          confirmPasswrordvalidationMessage?.trim() === "" &&
-          pinvalidationMessage?.trim() === "" &&
-          pswrdVal?.trim().length >= 8 &&
-          (isCaptchaValid || props.scriptingJson[constantValues.LBL_REGRESSION_ENABLE_VERIFY] == constantValues.REGRESSION_ENABLE_VERIFY_VALUE) &&
-          isAgeChecked  
-        setButtonEnable(enableVal)
-        return enableVal;
-      } else {
-        enableVal = emailVal?.trim() !== "" &&
-          pswrdVal?.trim() !== "" &&
-          pinVal?.trim() !== "" &&
-          emailvalidationMessage?.trim() === "" &&
-          passwrordvalidationMessage?.trim() === "" &&
-          pinvalidationMessage?.trim() === "" &&
-          pswrdVal?.trim().length >= 8 &&
-          (isCaptchaValid || props.scriptingJson[constantValues.LBL_REGRESSION_ENABLE_VERIFY] == constantValues.REGRESSION_ENABLE_VERIFY_VALUE) &&
-          isAgeChecked;
-        setButtonEnable(enableVal);
-        return enableVal;
-      }
-    } else {
-      setButtonEnable(true);
-      return true;
+        let checkButtonEnable = false;
+        if (fnameIsValid && lnameIsValid && zipValid) {
+            this.setState({ ctnBtnDisable: false });
+            checkButtonEnable = true;
+        } else {
+            // setCtnBtnDisable(true);
+            this.setState({ ctnBtnDisable: true });
+            checkButtonEnable = false;
+        }
+        if (checkButtonEnable === true) {
+            if (phoneNumber && phoneNumber.length !== 14 || this.state.birthDateValid === true) {
+                // setCtnBtnDisable(true);
+                this.setState({ ctnBtnDisable: true });
+            } else {
+                // setCtnBtnDisable(false);
+                this.setState({ ctnBtnDisable: false });
+            }
+        }
     }
-  };
- props?.createAccountFields
+Error: Maximum update depth exceeded. This can happen when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate. React limits the number of nested updates to prevent infinite loops.
