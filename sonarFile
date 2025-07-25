@@ -6,35 +6,26 @@ sonar.cpd.exclusions=
 
 C:\Users\vinoma1\simpleMobile\onevz-value-digital-mfe-account\components\Footer\styles
 
-componentDidUpdate(prevProps, prevState) {
-        if (prevProps.validRealEmailCheck != this.props.validRealEmailCheck && this.props.validRealEmailCheck) {
-            if (this.state.emailValidationData) {
-                this.registerAccountHandler(this.state.emailValidationData);
-            } else {
-                this.registerAccountHandler();
-            }
+const checkBirthdayVal = (event) => {
+    let birthDateValueLength = event?.target?.value?.length;
+    const ele = document.querySelector('#birthDateInfoerror');
+    
+      setBirthDateValid(false);
+      if(ele){
+          document.querySelector('#birthDateInfoerror').classList.add('d-none');
+      }
+    if(birthDateValueLength>0){
+      if(birthDateValueLength!==4&&birthDateValueLength!==5){
+        setBirthDateValid(true);
+        if(ele){
+          document.querySelector('#birthDateInfoerror').classList.remove('d-none');
         }
-        const { firstName: { isValid: fnameIsValid } = { isValid: false }, lastName: { isValid: lnameIsValid } = { isValid: false } } = this.props?.shippingInfo || {}
-        const { zipCode: { isValid: zipValid } = { isValid: false } } =this.props?.shippingAddressInfo || {}
-        const phoneNumber = this.props?.shippingInfo?.phoneNumber?.value;
-
-        let checkButtonEnable = false;
-        if (fnameIsValid && lnameIsValid && zipValid) {
-            this.setState({ ctnBtnDisable: false });
-            checkButtonEnable = true;
-        } else {
-            // setCtnBtnDisable(true);
-            this.setState({ ctnBtnDisable: true });
-            checkButtonEnable = false;
+      }
+      if(birthDateValueLength===4 && event?.target?.value?.charAt(3)==='0'){
+        setBirthDateValid(true);
+        if(ele){
+          document.querySelector('#birthDateInfoerror').classList.remove('d-none');
         }
-        if (checkButtonEnable === true) {
-            if (phoneNumber && phoneNumber.length !== 14 || this.state.birthDateValid === true) {
-                // setCtnBtnDisable(true);
-                this.setState({ ctnBtnDisable: true });
-            } else {
-                // setCtnBtnDisable(false);
-                this.setState({ ctnBtnDisable: false });
-            }
-        }
+      }
     }
-Error: Maximum update depth exceeded. This can happen when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate. React limits the number of nested updates to prevent infinite loops.
+  }
