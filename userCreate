@@ -1,0 +1,1683 @@
+import React, { Component, useEffect } from 'react';
+import { connect } from 'react-redux';
+import PropTypes from 'prop-types';
+import _ from 'underscore';
+import * as constantValues from '../../../store/constants/config';
+import CreateAccountModalForm from '../../UI/Forms/Forms';
+import Backdrop from '../../../components/UI/Backdrop/Backdrop';
+import ShowModalContent from '../ShowModalContent/ShowModalContent';
+import * as authDetailDataUtil from '../../../utils/AuthDetailDataUtil/AuthDetailDataUtil';
+import * as checkoutDetailDataUtil from '../../../utils/CheckoutDetailDataUtil/CheckoutDetailDataUtil';
+import Icon from '../../UI/Icon/Icon';
+import * as MyAccountDataUtil from '../../../utils/MyAccountDataUtil/MyAccountDataUtil';
+import Tooltip from '../../UI/Tooltip/Tooltip';
+import * as AppUtil from '../../../utils/ApiUtil';
+import * as actions from '../../../store/actions/index';
+import UserCreateAccountValueUi from '../../MyAccountLoginFlow/CreateAccount/UserCreateAccountValueUi';
+import { getErrorMessageFromScripting } from '../../../utils/AuthDetailDataUtil/AuthDetailDataUtil';
+import MoreInfoDetails from "../../MoreAccountDetails/MoreInfoDetails";
+import MoreInfoAddressDetails from "../../MoreAccountDetails/MoreInfoAddressDetails";
+import AddressValidationModal from "../../CheckoutDetail/CheckoutProcess/AddressValidationModal/AddressValidationModal";
+import FormDropDown from '../../UI/FormElements/FormDropDown';
+
+import { getActivationCookie } from '../../MyAccountLoginFlow/utility/common';
+
+import {
+    SHE_HER,
+    HE_HIM,
+    THEY_THEM,
+    LBL_OTHER,
+    PERSONALIZE_EXPERIENCE_TEXT,
+    FORM_NOTE,
+    LBL_BIRTHDATE,
+    LBL_PRONOUN,
+    LBL_PROFILE_ADDRESS,
+
+} from "../../../store/constants/config";
+
+class UserCreateAccount extends Component {
+
+    constructor(props) {
+        super(props);
+        this.createAccountRememberMeRef = React.createRef();
+        this.passwordRef = React.createRef();
+        this.state = {
+            formDefinition: null,
+            pronounDefinition: null,
+            formIsValid: false,
+            ageConsent: false,
+            showWhyNeedThisModal: false,
+            showLearnMoreModal: false,
+            modalName: constantValues.LEARN_MORE_MODAL,
+            updateFormState: false,
+            showAgentConsent: true,
+            showRememberMe: true,
+            consentTbvCheckbox: true,
+            maskedEmail: '',
+            SecurityPin: '',
+            password: '',
+            isRewardsEnrolled: false,
+            passwordCleared: false,
+            emailExist: this.props.errorMessage,
+            errorCode: this.props.errorCode,
+            emailAlreadyExistList: [],
+            showMoreDetails: false,
+            displayAddressValidationModal: false,
+            birthDate: "",
+            formattedBirthdate: "",
+            pronoun: "",
+            formattedDate: "",
+            isUnitCalled: false,
+            addressLin2Unit: null,
+            emailValidationData: null,
+            currentFlowType: authDetailDataUtil.getCookie(constantValues.FLOW_TYPE_COOKIE_NAME),
+            _createAccountFields: false,
+            customerObj: null,
+            frFirstName: '',
+            frLastName: '',
+            ctnBtnDisable: true,
+            birthDateValid: false
+        };
+
+        this.learnMoreLinkRef = React.createRef();  //create a ref to store the learn more link DOM element
+        this.whatIsThisLinkRef = React.createRef();  //create a ref to store the learn more link DOM element
+        this.fbButtonRef = React.createRef();  //create a ref to store the facebbook button link DOM element
+        this.consentCheckboxRef = React.createRef();  //create a ref to store the conset checkbox DOM element
+        this.learnMoreDisplayRef = React.createRef(); //create a ref to store the learn more DOM element
+        this.consentDivRef = React.createRef(); //create a ref to store the conset div DOM element
+    }
+
+    // ...
+    /* This function is invoked immediately after a component is mounted (inserted into the tree) */
+    componentDidMount() {
+        if (this.props?.errorMessage && this.props.fromIndirectPay && this.props.errorCode === '10402' && document.getElementById("createAccountEmail")) {
+            document.getElementById("createAccountEmail").focus();
+
+            setTimeout(() => {
+                if (document.getElementById("createAccountEmail")) {
+                    document.getElementById("createAccountEmail").blur();
+                }
+
+            }, 0);
+        }
+
+        MyAccountDataUtil.shiftFocusWithModal("login-create-account-modal-box", "user-create-account-continue-button");
+
+
+        if (this.props.transactionType === constantValues.CART_TRANSACTION_TYPE_ACTIVATION) {
+            if (/\b(v1)\b/i.test(this.props.componentVersion)) {
+                if (!_.isNull(this.learnMoreLinkRef.current))
+                    this.learnMoreLinkRef.current.className = "caption-two text-color-grey border-bottom-grey d-inline-block";
+                if (!_.isNull(this.whatIsThisLinkRef.current))
+                    this.whatIsThisLinkRef.current.className = "caption-two text-color-grey border-bottom-grey pt-10";
+                if (!_.isNull(this.consentCheckboxRef.current))
+                    this.consentCheckboxRef.current.className = "remember-me-checkbox custom-control custom-checkbox-spa mt-auto";
+                if (!_.isNull(this.learnMoreDisplayRef.current) && !_.isNull(this.learnMoreDisplayRef.current.style))
+                    this.learnMoreDisplayRef.current.style.marginLeft = "";
+                if (!_.isNull(this.consentDivRef.current))
+                    this.consentDivRef.current.className = "text-center mt-10";
+                if (this.props.enableFacebookAuth === constantValues.ARIA_HIDDEN_TRUE && !_.isNull(this.fbButtonRef.current))
+                    this.fbButtonRef.current.className = "extra-large facebook-btn text-center";
+            } else if (/\b(v2|v3)\b/i.test(this.props.componentVersion)) {
+                if (!_.isNull(this.learnMoreLinkRef.current))
+                    this.learnMoreLinkRef.current.className = "default-md d-inline-block font-weight-bold";
+                if (!_.isNull(this.whatIsThisLinkRef.current))
+                    this.whatIsThisLinkRef.current.className = "default-md font-weight-bold";
+                if (!_.isNull(this.consentCheckboxRef.current))
+                    this.consentCheckboxRef.current.className = "remember-me-checkbox custom-control custom-checkbox-spa mt-auto text-lg-left";
+                if (!_.isNull(this.learnMoreDisplayRef.current) && !_.isNull(this.learnMoreDisplayRef.current.style))
+                    this.learnMoreDisplayRef.current.style.marginLeft = "32px";
+                if (!_.isNull(this.consentDivRef.current))
+                    this.consentDivRef.current.className = "text-center mt-30";
+                if (this.props.enableFacebookAuth === constantValues.ARIA_HIDDEN_TRUE && !_.isNull(this.fbButtonRef.current))
+                    this.fbButtonRef.current.className = "extra-large facebook-btn text-center text-lg-left";
+            }
+        }
+        if (!_.isEmpty(this.props.skipAgeConsent) && this.props.skipAgeConsent === "true") {
+            this.setState({ ageConsent: true, showAgentConsent: false });
+        }
+        if (!_.isEmpty(this.props.hideRememberMe) && this.props.hideRememberMe === "true") {
+            this.setState({ showRememberMe: false });
+        }
+        if (/\b(v1)\b/i.test(this.props.componentVersion)) {
+            this.setState({ ageConsent: true, showAgentConsent: false });
+        }
+        if (this.props.isTabletFlow) {
+            this.setState({ ageConsent: true, showAgentConsent: false });
+        }
+    }
+
+
+    /* This method is invoked right before calling the render method.
+     * It should return an object to update the state, or null to update nothing.
+     * This method is used here because the state depends on changes in scriptingJson prop over time.
+     */
+
+    registerAccountHandler = (data) => {
+        let email = null, password = null, firstName = null, lastName = null, securityPin = null, securityPin1 = null, rememberMe = null, customerObject = null, esn = null, zipCode = null, webObjId = null;
+        if (window.checkIsForgeRockEnabled()) {
+            email = data.email;
+            password = data.password;
+            securityPin = data.pin;
+            rememberMe = data.rememberMe
+            if (this.state._createAccountFields) {
+                firstName = data.firstName;
+                lastName = data.lastName;
+                this.setState({ frFirstName: data.firstName });
+                this.setState({ frLastName: data?.lastName });
+            }
+        } else {
+            if (this.state.showRememberMe && !_.isEmpty(this.createAccountRememberMeRef.current.value)) {
+                rememberMe = this.createAccountRememberMeRef.current.checked;
+            }
+            if (!_.isUndefined(this.props.createAccountFormInfo) && !_.isUndefined(this.props.createAccountFormInfo["emailAddress"]) && !_.isUndefined(this.props.createAccountFormInfo["password"]) && !_.isUndefined(this.props.createAccountFormInfo["securityPin"])) {
+                email = this.props.createAccountFormInfo["emailAddress"].value;
+                password = this.props.createAccountFormInfo["password"].value;
+                securityPin = this.props.createAccountFormInfo["securityPin"].value;
+                securityPin1 = this.props.createAccountFormInfo["securityPin1"]?.value;
+            }
+        }
+        /* save email in encrypted form in cookie for 1 year if rememberMe value is true*/
+        if (!_.isEmpty(email) && _.isBoolean(rememberMe) && rememberMe === true) {
+            authDetailDataUtil.saveCookie(constantValues.REMEMBER_ME_COOKIE_NAME, email, "true");
+        }
+        /**Find the zip code from cookie to pass in create account api */
+        if (this.props.transactionType === constantValues.CART_TRANSACTION_TYPE_ACTIVATION) {
+            zipCode = authDetailDataUtil.getValueFromCookieJson(constantValues.ZIP_CODE, authDetailDataUtil.getCookie(constantValues.ACTIVATE_COOKIE, "true"));
+        }
+        else if (this.props.transactionType === constantValues.CART_TRANSACTION_TYPE_REFILL) {
+            zipCode = authDetailDataUtil.getValueFromCookieJson(constantValues.ZIP_CODE_COOKIE_NAME, authDetailDataUtil.getCookie(constantValues.REFILL_COOKIE, "true"));
+        }
+        else {
+            zipCode = authDetailDataUtil.getCookie(constantValues.COOKIE_NAME_LOCATION, "false");
+        }
+
+        /**If transaction flow is hpp then get the esn from phone cookie & pass to create account object*/
+        if (this.props.transactionType === constantValues.CART_TRANSACTION_TYPE_HPP_STANDALONE) {
+            esn = checkoutDetailDataUtil.getPhoneCookieArray()[0];
+        } else if (this.props.transactionType === constantValues.CART_TRANSACTION_TYPE_ACTIVATION) {
+            esn = authDetailDataUtil.getValueFromCookieJson(constantValues.ESN, authDetailDataUtil.getCookie(constantValues.ACTIVATE_COOKIE, "true"));
+        }
+        else if (this.props.transactionType === constantValues.CART_TRANSACTION_TYPE_REFILL) {
+            esn = authDetailDataUtil.getValueFromCookieJson(constantValues.HANDSET_SERIAL_NO, authDetailDataUtil.getCookie(constantValues.REFILL_COOKIE, "true"));
+            //For Dummy Account, pass webObjId
+            if (/\b(v2|v3)\b/i.test(this.props.componentVersion) && new RegExp(constantValues.DUMMY_ACCOUNT, "i").test(localStorage.getItem(constantValues.ACCOUNT_STATUS))) {
+                webObjId = authDetailDataUtil.getValueFromCookieJson(constantValues.AID, authDetailDataUtil.getCookie(constantValues.REFILL_COOKIE, "true"));
+            }
+        } else if (this.props.transactionType === constantValues.CART_TRANSACTION_TYPE_VAS_STANDALONE) {
+            webObjId = localStorage.getItem("webObjId");
+        }
+
+        if (authDetailDataUtil.checkRealEmailWithNullPwd(this.props.scriptingJson) && webObjId == null) {
+            if (authDetailDataUtil.getCookieValue("accountId")) {
+                webObjId = authDetailDataUtil.getCookie("accountId", "true");
+                webObjId = webObjId.replaceAll("\"", "");
+            }
+        }
+        /*create the customer object to pass in api.*/
+        customerObject = authDetailDataUtil.getCustomerObject(email, password, securityPin, zipCode, esn, webObjId, this.props.resetUser, this.props.fromIndirectPay)
+        /* trigger the createAccount call by passing customer object*/
+        if (this.state._createAccountFields) {
+            this.setState({ showMoreDetails: true });
+            this.setState({ customerObj: customerObject })
+        }
+
+        if (!_.isEmpty(customerObject) && !this.state._createAccountFields) {
+            this.props.createAccount(customerObject);
+        }
+    }
+
+    handleCreateAccount = () => {
+        let email = null, password = null, securityPin = null, securityPin1 = null, rememberMe = null, customerObject = null, esn = null, zipCode = null, webObjId = null;
+        if (this.state.showRememberMe && !_.isEmpty(this.createAccountRememberMeRef.current.value)) {
+            rememberMe = this.createAccountRememberMeRef.current.checked;
+        }
+        if (!_.isUndefined(this.props.createAccountFormInfo) && !_.isUndefined(this.props.createAccountFormInfo["emailAddress"]) && !_.isUndefined(this.props.createAccountFormInfo["password"]) && !_.isUndefined(this.props.createAccountFormInfo["securityPin"])) {
+
+            email = this.props.createAccountFormInfo["emailAddress"].value;
+            password = this.props.createAccountFormInfo["password"].value;
+            securityPin = this.props.createAccountFormInfo["securityPin"].value;
+            securityPin1 = this.props.createAccountFormInfo["securityPin1"]?.value;
+        }
+
+        /*create the customer object to pass in api.*/
+        if (this.props.isInspicioFlow) {
+            this.setState({ maskedEmail: email, password: password, SecurityPin: securityPin }, () => {
+                this.callCreateAccountApi();
+            })
+        }
+
+    }
+    callCreateAccountApi = async () => {
+        const { SecurityPin, password, isRewardsEnrolled } = this.state;
+        const updatedDataPayload = { SecurityPin, password, isRewardsEnrolled };
+        this.props.triggerApiCall(updatedDataPayload);
+        // Call the API with the generated payload
+
+    };
+    handleCheckboxChange = (event) => {
+        const { name, checked } = event.target;
+        if (name === 'consentTbvCheckbox') {
+            this.setState({
+                [name]: checked,
+                passwordCleared: !checked
+            });
+            this.props.setCheckboxHandler(checked);
+            if (!checked) {
+                if (this.props.createAccountFormInfo && this.props.createAccountFormInfo["password"] && this.props.createAccountFormInfo["password"].value !== undefined) {
+                    // Clear the password in props only if it exists
+                    this.props.createAccountFormInfo["password"].value = "";
+                }
+                if (this.passwordRef.current) {
+                    // Clear password in input using ref
+                    this.passwordRef.current.value = '';
+                }
+            }
+        }
+        else {
+            this.setState({
+                [name]: checked
+            });
+        }
+    };
+
+    isCreateAccountButtonDisable = () => {
+        const { createAccountFormInfo } = this.props;
+        if (createAccountFormInfo && !_.isEmpty(createAccountFormInfo["password"]) && createAccountFormInfo["password"]) {
+            return !this.state.consentTbvCheckbox
+        } else {
+            return false;
+        }
+    }
+
+    isEmailCheckRequired = () => {
+        if ((this.props.resetUser && this.props.fromIndirectPay) || (!_.isUndefined(this.props.maskedEmail) && !_.isEmpty(this.props.maskedEmail)))
+            return false;
+
+        return (this.props.scriptingJson[constantValues.ENABLE_ACCOUNT_CREATION_VALIDATION] === "true" ? true : false);
+    }
+
+    isInputProvided = () => {
+        const { createAccountFormInfo } = this.props;
+
+        // Check if createAccountFormInfo exists and has the required fields
+        if (
+            !createAccountFormInfo ||
+            !createAccountFormInfo["emailAddress"] ||
+            !createAccountFormInfo["password"] ||
+            !createAccountFormInfo["securityPin"]
+        ) {
+            return false; // Return false if any of the fields are undefined
+        }
+        const emailValue = createAccountFormInfo["emailAddress"]?.value || '';
+        const passwordValue = createAccountFormInfo["password"]?.value || '';
+        const pinValue = createAccountFormInfo["securityPin"]?.value || '';
+        const confirmPinValue = createAccountFormInfo["securityPin1"]?.value || '';
+
+        if (createAccountFormInfo) {
+            if (this.state.consentTbvCheckbox) {
+                if (createAccountFormInfo?.password?.isValid === false) {
+                    return false;
+                }
+            }
+            if (createAccountFormInfo?.securityPin?.isValid === false || createAccountFormInfo?.securityPin1?.isValid === false ||
+                createAccountFormInfo?.securityPin?.value !== createAccountFormInfo?.securityPin1?.value
+            ) {
+                return false;
+            }
+
+        }
+
+        if (this.state.consentTbvCheckbox) {
+            return emailValue !== '' && passwordValue !== '' && pinValue !== '';
+        }
+        // Check if all fields have values
+        else { return emailValue !== '' && pinValue !== '' && confirmPinValue !== '' && pinValue === confirmPinValue; }
+    };
+
+    isAdditionalInfoProvided = () => {
+        const { phoneNumber } = this.props?.shippingInfo || {};
+        const { zipCode: { isValid: zipValid } = { isValid: false } } = this.props?.shippingAddressInfo || {};
+        const isBirthDateValid = this.state.birthDateValid;
+        const phoneLengthInvalid = phoneNumber && phoneNumber.length !== 14;
+        // Logic to decide new value for ctnBtnDisable
+        if (isBirthDateValid && phoneLengthInvalid) {
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
+    static getDerivedStateFromProps(props, state) {
+        let flag = props?.errorMessage && props.fromIndirectPay && props.errorCode === '10402';
+        let createAccountFields = false;
+        /* get email from fbUserDetails */
+        const fbUserDetailEmail = !_.isEmpty(props.fbUserDetails) ? props.fbUserDetails.email : "";
+        const finalAPIPath = props.scriptingJson[constantValues.ERROR_MESSAGE_API_PATH_MAPPING["createAccountErrorMessage"]];
+        // after CI pull on 20-07-2022, rememberMeCookie is of no use
+        // const rememberMeCookie = authDetailDataUtil.getCookie(constantValues.REMEMBER_ME_COOKIE_NAME,"true")?.replaceAll('"',"");
+
+        let brandName = document.querySelector('.section-api-container')?.dataset.brand;
+        const executionPlanAction = localStorage.getItem('executionPlanAction');
+        localStorage.removeItem("showAdditionalDetails");
+        if (executionPlanAction &&
+            ((getActivationCookie()?.flow === constantValues.NEW_ACTIVATION_TYPE && executionPlanAction === constantValues.ACTION_TYPE_ACTIVATION) ||
+                (getActivationCookie()?.flow === constantValues.EXTERNAL_TYPE && executionPlanAction === constantValues.EXTERNAL_PORT) ||
+                (getActivationCookie()?.flow === constantValues.INTERNAL_TYPE && executionPlanAction === constantValues.INTERNAL_PORT)) &&
+            state.currentFlowType === constantValues.ACTIVATION_FLOW_TYPE) {
+            createAccountFields = true;
+            localStorage.setItem("showAdditionalDetails", "true");
+        }
+
+        return {
+            formDefinition: {
+                firstName: createAccountFields ? {
+                    fieldFormat: 'single',
+                    fieldType: 'textbox',
+                    elementType: 'input',
+                    elementConfig: {
+                        type: 'text',
+                        id: 'createAccountFirstName',
+                        name: 'createAccountFirstName',
+                        className: `form-control`,
+                        'aria-describedby': "firstNameCreateAccountFormInfoerror",
+                        'aria-required': true,
+                        'aria-label': `${props.scriptingJson[constantValues._LBL_ENTER]} ${props.scriptingJson[constantValues._LBL_FORM_FIRST_NAME_WITHOUT_ASTRIK]}`,
+                        //isDisabledField: props.fromIndirectPay && !_.isEmpty(props.dummyAccountUserEmail) && !flag ? true: false
+                    },
+                    value: !_.isEmpty(props.createAccountFormInfo) && !_.isEmpty(props.createAccountFormInfo["firstName"]) && !_.isEmpty(props.createAccountFormInfo["firstName"].value) ? props.createAccountFormInfo["firstName"].value : '',
+                    label: props.fromIndirectPay ? props.scriptingJson[constantValues._LBL_INDIRECT_FORM_FIRST_NAME_ASTRIK] : props.scriptingJson[constantValues._LBL_FORM_FIRST_NAME],
+                    validation: {
+                        required: true,
+                        maxLength: 128,
+                        isAlphabetical: true
+                    },
+                    errorDescriptions: {
+                        isMandatoryError: props.scriptingJson[constantValues._ERR_MANDATORY_FIRST_NAME],
+                        isLimitExceedError: props.scriptingJson[constantValues._ERR_LIMIT_EXCEED_FIRST_NAME],
+                        isInvalidError: props.scriptingJson[constantValues._ERR_INVALID_FIRST_NAME],
+                    },
+                    isValid: !_.isEmpty(props.createAccountFormInfo) && !_.isEmpty(props.createAccountFormInfo["firstName"]) && !_.isEmpty(props.createAccountFormInfo["firstName"].value) ? true : false,
+                    touched: !_.isEmpty(props.createAccountFormInfo) && !_.isEmpty(props.createAccountFormInfo["firstName"]) && !_.isEmpty(props.createAccountFormInfo["firstName"].value) ? true : false
+                } : {},
+                lastName: createAccountFields ? {
+                    fieldFormat: 'single',
+                    fieldType: 'textbox',
+                    elementType: 'input',
+                    elementConfig: {
+                        type: 'text',
+                        id: 'createAccountLastName',
+                        name: 'createAccountLastName',
+                        className: `form-control`,
+                        'aria-describedby': "lastNameCreateAccountFormInfoerror",
+                        'aria-required': true,
+                        'aria-label': `${props.scriptingJson[constantValues._LBL_ENTER]} ${props.scriptingJson[constantValues._LBL_FORM_LAST_NAME_WITHOUT_ASTRIK]}`,
+                        //isDisabledField: props.fromIndirectPay && !_.isEmpty(props.dummyAccountUserEmail) && !flag ? true: false
+                    },
+                    value: !_.isEmpty(props.createAccountFormInfo) && !_.isEmpty(props.createAccountFormInfo["lastName"]) && !_.isEmpty(props.createAccountFormInfo["lastName"].value) ? props.createAccountFormInfo["lastName"].value : '',
+                    label: props.fromIndirectPay ? props.scriptingJson[constantValues._LBL_INDIRECT_FORM_LAST_NAME_ASTRIK] : props.scriptingJson[constantValues._LBL_FORM_LAST_NAME],
+                    validation: {
+                        required: true,
+                        maxLength: 128,
+                        isAlphabetical: true
+                    },
+                    errorDescriptions: {
+                        isMandatoryError: props.scriptingJson[constantValues._ERR_MANDATORY_LAST_NAME],
+                        isLimitExceedError: props.scriptingJson[constantValues._ERR_LIMIT_EXCEED_LAST_NAME],
+                        isInvalidError: props.scriptingJson[constantValues._ERR_INVALID_LAST_NAME],
+                    },
+                    isValid: !_.isEmpty(props.createAccountFormInfo) && !_.isEmpty(props.createAccountFormInfo["lastName"]) && !_.isEmpty(props.createAccountFormInfo["lastName"].value) ? true : false,
+                    touched: !_.isEmpty(props.createAccountFormInfo) && !_.isEmpty(props.createAccountFormInfo["lastName"]) && !_.isEmpty(props.createAccountFormInfo["lastName"].value) ? true : false
+                } : {},
+                emailAddress: {
+                    fieldFormat: 'single',
+                    fieldType: 'textbox',
+                    elementType: 'input',
+                    elementConfig: {
+                        type: 'email',
+                        id: 'createAccountEmail',
+                        name: 'createAccountEmail',
+                        className: `form-control ${((props.fromIndirectPay && props.dummyAccountUserEmail) && !flag) || props.maskedEmail ? "disabledContent success" : ''}`,
+                        'aria-describedby': "emailAddressCreateAccountFormInfoerror",
+                        'aria-required': true,
+                        'aria-label': `${props.scriptingJson[constantValues._LBL_ENTER]} ${props.scriptingJson[constantValues._LBL_FORM_EMAIL_WITHOUT_ASTRIK]}`,
+                        //isDisabledField: props.fromIndirectPay && !_.isEmpty(props.dummyAccountUserEmail) && !flag ? true: false
+                    },
+                    value: (props.fromIndirectPay && !_.isEmpty(props.dummyAccountUserEmail) && !flag) ? props.resetUser && props.resetUserEmail ? props.resetUserEmail : props.dummyAccountUserEmail : (!_.isEmpty(props.createAccountFormInfo) && !_.isEmpty(props.createAccountFormInfo["emailAddress"]) && !_.isEmpty(props.createAccountFormInfo["emailAddress"].value) ? props.createAccountFormInfo["emailAddress"].value : (props.maskedEmail || fbUserDetailEmail)),
+                    label: props.fromIndirectPay ? props.scriptingJson[constantValues._LBL_INDIRECT_EMAIL_ADDRESS] : props.scriptingJson[constantValues._LBL_FORM_EMAIL_RETRIEVE_ORDER],
+                    validation: {
+                        required: true,
+                        maxLength: 256,
+                        isEmail: true,
+                        isNewEmail: true,
+                        isValidRealEmail: _.isEmpty(props.validRealEmailCheckError) ? true : false,
+                        isEmailExist: flag ? true : false,
+                        duplicateCreateAccountEmailIDs: props.duplicateCreateAccountEmailIDs,
+                        isMasked: authDetailDataUtil.checkRealEmailWithNullPwd(props.scriptingJson)
+                    },
+                    errorDescriptions: {
+                        isMandatoryError: props.scriptingJson[constantValues._ERR_MANDATORY_EMAIL],
+                        isLimitExceedError: props.scriptingJson[constantValues._ERR_LIMIT_EXCEED_EMAIL],
+                        isInvalidError: props.scriptingJson[constantValues._ERR_INVALID_EMAIL],
+                        validRealEmailError: _.isEmpty(props.validRealEmailCheckError) ? null : MyAccountDataUtil.getValidRealEmailErrorMessgage(props.validRealEmailCheckError, props.scriptingJson),
+                        isEmailAlreadyExist: getErrorMessageFromScripting(props.scriptingJson, props.errorCode, finalAPIPath, false)
+                    },
+                    isValid: (props.fromIndirectPay && !_.isEmpty(props.dummyAccountUserEmail)) || authDetailDataUtil.checkRealEmailWithNullPwd(props.scriptingJson) ? true : (!_.isEmpty(props.createAccountFormInfo) && !_.isEmpty(props.createAccountFormInfo["emailAddress"]) && !_.isEmpty(props.createAccountFormInfo["emailAddress"].value)) ? props.createAccountFormInfo["emailAddress"].value : !_.isEmpty(authDetailDataUtil.getCookie(constantValues.REMEMBER_ME_COOKIE_NAME, "true")) ? true : false,
+                    touched: (props.fromIndirectPay && !_.isEmpty(props.dummyAccountUserEmail)) ? true : (!_.isEmpty(props.createAccountFormInfo) && !_.isEmpty(props.createAccountFormInfo["emailAddress"]) && !_.isEmpty(props.createAccountFormInfo["emailAddress"].value)) ? props.createAccountFormInfo["emailAddress"].value : !_.isEmpty(authDetailDataUtil.getCookie(constantValues.REMEMBER_ME_COOKIE_NAME, "true")) ? true : false
+                },
+                password: {
+                    fieldFormat: 'single',
+                    fieldType: 'textbox',
+                    elementType: 'input',
+                    elementConfig: {
+                        type: 'password',
+                        id: 'createAccountPassword',
+                        name: 'createAccountPassword',
+                        className: `form-control ${!state.consentTbvCheckbox ? "disabledContent" : ''}`,
+                        autoComplete: "off",
+                        'aria-required': true,
+                        'aria-describedby': "passwordCreateAccountFormInfoerror",
+                        'aria-label': `${props.scriptingJson[constantValues._LBL_ENTER]} ${props.scriptingJson[constantValues._LBL_FORM_PASSWORD_WITHOUT_ASTRIK]}`
+                    },
+                    value: state.passwordCleared ? '' //if password is cleared return empty string
+                        : !_.isEmpty(props.createAccountFormInfo) && !_.isEmpty(props.createAccountFormInfo["password"]) && !_.isEmpty(props.createAccountFormInfo["password"].value) ? props.createAccountFormInfo["password"].value : '',
+                    label: props.fromIndirectPay ? props.scriptingJson[constantValues._LBL_INDIRECT_ENTER_PASSWORD] : props.scriptingJson[constantValues._LBL_FORM_PASSWORD],
+                    validation: {
+                        required: true,
+                        maxLength: 30,
+                        minLength: 8,
+                        isPassword: true,
+                        comparedField: (/TOTAL_WIRELESS/i.test(`${props.scriptingJson[constantValues.API_BRAND_NAME]}`) && props.isInspicioFlow) ? false : true,
+                        matchFields: (/TOTAL_WIRELESS/i.test(`${props.scriptingJson[constantValues.API_BRAND_NAME]}`) && props.isInspicioFlow) ? false : ["createAccountPassword", "createAccountConfirmPassword"]
+                    },
+                    errorDescriptions: {
+                        isMandatoryError: props.scriptingJson[constantValues._ERR_MANDATORY_PASSWORD],
+                        isLimitExceedError: props.scriptingJson[constantValues._ERR_LIMIT_EXCEED_PASSWORD],
+                        isLimitShortError: props.scriptingJson[constantValues._ERR_CREATE_ACT_LIMIT_SHORT_PASSWORD],
+                        isInvalidError: props.scriptingJson[constantValues._ERR_INVALID_PASSWORD],
+                        notMatchError: props.scriptingJson[constantValues._ERR_INVALID_CONFIRM_PASSWORD]
+                    },
+                    showViewOption: true,
+                    isValid: !_.isEmpty(props.createAccountFormInfo) && !_.isEmpty(props.createAccountFormInfo["password"]) && !_.isEmpty(props.createAccountFormInfo["password"].value),
+                    touched: !_.isEmpty(props.createAccountFormInfo) && !_.isEmpty(props.createAccountFormInfo["password"]) && !_.isEmpty(props.createAccountFormInfo["password"].value)
+                },
+                confirmPassword: (/TOTAL_WIRELESS/i.test(`${props.scriptingJson[constantValues.API_BRAND_NAME]}`) && props.isInspicioFlow) ? {} : {
+                    fieldFormat: 'single',
+                    fieldType: 'textbox',
+                    elementType: 'input',
+                    elementConfig: {
+                        type: 'password',
+                        id: 'createAccountConfirmPassword',
+                        name: 'createAccountConfirmPassword',
+                        className: "form-control",
+                        autoComplete: "off",
+                        'aria-required': true,
+                        'aria-describedby': "confirmPasswordCreateAccountFormInfoerror",
+                        'aria-label': `${props.scriptingJson[constantValues._LBL_FORM_CONFIRM_PASSWORD]}`
+                    },
+                    value: !_.isEmpty(props.createAccountFormInfo) && !_.isEmpty(props.createAccountFormInfo["confirmPassword"]) && !_.isEmpty(props.createAccountFormInfo["confirmPassword"].value) ? props.createAccountFormInfo["confirmPassword"].value : '',
+                    label: props.fromIndirectPay ? props.scriptingJson[constantValues._LBL_INDIRECT_CONFIRM_PASSWORD] : props.scriptingJson[constantValues._LBL_FORM_CONFIRM_PASSWORD],
+                    validation: {
+                        required: true,
+                        maxLength: 30,
+                        minLength: 8,
+                        isMatchPassword: true,
+                        comparedField: true,
+                        matchFields: ["createAccountPassword", "createAccountConfirmPassword"],
+                    },
+                    errorDescriptions: {
+                        isPasswordMandatoryError: props.scriptingJson[constantValues._ERR_MANDATORY_PASSWORD],
+                        isMandatoryError: props.fromIndirectPay ? props.scriptingJson[constantValues._ERROR_INDIRECT_CONFIRMPWD_REQUIRED] : props.scriptingJson[constantValues._ERR_MANDATORY_CONFIRM_PASSWORD],
+                        isLimitExceedError: props.scriptingJson[constantValues._ERR_LIMIT_EXCEED_CONFIRM_PASSWORD],
+                        isLimitShortError: props.scriptingJson[constantValues._ERROR_INDIRECT_INVALID_PASSWORD_CONFIRMATION],
+                        isInvalidError: props.scriptingJson[constantValues._ERR_INVALID_CONFIRM_PASSWORD],
+                        notMatchError: props.scriptingJson[constantValues._ERR_INVALID_CONFIRM_PASSWORD],
+                    },
+                    showViewOption: true,
+                    isValid: !_.isEmpty(props.createAccountFormInfo) && !_.isEmpty(props.createAccountFormInfo["confirmPassword"]) && !_.isEmpty(props.createAccountFormInfo["confirmPassword"].value),
+                    touched: !_.isEmpty(props.createAccountFormInfo) && !_.isEmpty(props.createAccountFormInfo["confirmPassword"]) && !_.isEmpty(props.createAccountFormInfo["confirmPassword"].value)
+                },
+                securityPin: {
+                    fieldFormat: 'single',
+                    fieldType: 'textbox',
+                    elementType: 'input',
+                    elementConfig: {
+                        type: 'password',
+                        id: 'createAccountSecurityPin',
+                        name: 'createAccountSecurityPin',
+                        className: "form-control phoneNbr",
+                        autoComplete: "off",
+                        'aria-required': true,
+                        'aria-label': `${props.scriptingJson[constantValues._LBL_ENTER]} ${props.scriptingJson[constantValues._LBL_ACCOUNT_INFO_SECURITY_PIN]}`
+                    },
+                    showAriaLive: true,
+                    value: !_.isEmpty(props.createAccountFormInfo) && !_.isEmpty(props.createAccountFormInfo["securityPin"]) && !_.isEmpty(props.createAccountFormInfo["securityPin"].value) ? props.createAccountFormInfo["securityPin"].value : '',
+                    label: props.scriptingJson[constantValues._LBL_FORM_SECURITY_PIN],
+                    validation: {
+                        required: true,
+                        maxLength: 4,
+                        minLength: 4,
+                        onlyDigitsAllowed: true,
+                        isNotSameAndSequential: true,
+                        comparedField: props.fromIndirectPay ? true : false,
+                        matchFields: props.fromIndirectPay ? ["createAccountSecurityPin", "createAccountConfirmSecurityPin"] : false,//,
+                    },
+                    errorDescriptions: {
+                        isMandatoryError: props.scriptingJson[constantValues._ERR_MANDATORY_SECURITY_PIN],
+                        isLimitExceedError: props.scriptingJson[constantValues._ERR_LIMIT_EXCEED_SECURITY_PIN],
+                        isLimitShortError: props.scriptingJson[constantValues._ERR_LIMIT_SHORT_SECURITY_PIN],
+                        isInvalidError: props.scriptingJson[constantValues._ERR_INVALID_SECURITY_PIN],
+                        onlyDigitsAllowedError: props.scriptingJson[constantValues._ERR_ONLY_DIGITS_ALLOWED] ? props.scriptingJson[constantValues._ERR_ONLY_DIGITS_ALLOWED] : constantValues._ERR_ONLY_DIGITS_ALLOWED,
+                        notMatchError: props.scriptingJson[constantValues._ERROR_INDIRECT_INVALID_SECURITYPIN],
+                        isNotSameAndSequentialError: props.scriptingJson[constantValues._ERR_SECURITY_PIN_SAME_AND_SEQUENTIAL]
+                    },
+                    showViewOption: true,
+                    isValid: !_.isEmpty(props.createAccountFormInfo) && !_.isEmpty(props.createAccountFormInfo["securityPin"]) && !_.isEmpty(props.createAccountFormInfo["securityPin"].value),
+                    touched: !_.isEmpty(props.createAccountFormInfo) && !_.isEmpty(props.createAccountFormInfo["securityPin"]) && !_.isEmpty(props.createAccountFormInfo["securityPin"].value)
+                },
+                securityPin1: props.fromIndirectPay ? {
+                    fieldFormat: 'single',
+                    fieldType: 'textbox',
+                    elementType: 'input',
+                    elementConfig: {
+                        type: 'password',
+                        id: 'createAccountConfirmSecurityPin',
+                        name: 'createAccountConfirmSecurityPin',
+                        className: "form-control phoneNbr",
+                        autoComplete: "off",
+                        'aria-required': true,
+                        'aria-label': `${props.scriptingJson[constantValues._LBL_ENTER]} ${props.scriptingJson[constantValues._LBL_ACCOUNT_INFO_SECURITY_PIN]}`
+                    },
+                    showAriaLive: true,
+                    value: !_.isEmpty(props.createAccountFormInfo) && !_.isEmpty(props.createAccountFormInfo["securityPin1"]) && !_.isEmpty(props.createAccountFormInfo["securityPin1"].value) ? props.createAccountFormInfo["securityPin1"].value : '',
+                    label: props.scriptingJson[constantValues._LBL_FORM_SECURITY_PIN],
+                    validation: {
+                        required: true,
+                        maxLength: 4,
+                        minLength: 4,
+                        onlyDigitsAllowed: true,
+                        comparedField: true,
+                        matchFields: ["createAccountSecurityPin", "createAccountConfirmSecurityPin"],
+                    },
+                    errorDescriptions: {
+                        isMandatoryError: props.scriptingJson[constantValues._ERR_MANDATORY_SECURITY_PIN],
+                        isLimitExceedError: props.scriptingJson[constantValues._ERR_LIMIT_EXCEED_SECURITY_PIN],
+                        isLimitShortError: props.scriptingJson[constantValues._ERR_LIMIT_SHORT_SECURITY_PIN],
+                        isInvalidError: props.scriptingJson[constantValues._ERR_INVALID_SECURITY_PIN],
+                        onlyDigitsAllowedError: props.scriptingJson[constantValues._ERR_ONLY_DIGITS_ALLOWED] ? props.scriptingJson[constantValues._ERR_ONLY_DIGITS_ALLOWED] : constantValues._ERR_ONLY_DIGITS_ALLOWED_TXT,
+                        notMatchError: props.scriptingJson[constantValues._ERROR_INDIRECT_INVALID_SECURITYPIN]
+                    },
+                    showViewOption: true,
+                    isValid: !_.isEmpty(props.createAccountFormInfo) && !_.isEmpty(props.createAccountFormInfo["securityPin1"]) && !_.isEmpty(props.createAccountFormInfo["securityPin1"].value),
+                    touched: !_.isEmpty(props.createAccountFormInfo) && !_.isEmpty(props.createAccountFormInfo["securityPin1"]) && !_.isEmpty(props.createAccountFormInfo["securityPin1"].value)
+                } : props.isInspicioFlow ? {
+                    fieldFormat: 'single',
+                    fieldType: 'textbox',
+                    elementType: 'input',
+                    elementConfig: {
+                        type: 'password',
+                        id: 'createAccountConfirmSecurityPin',
+                        name: 'createAccountConfirmSecurityPin',
+                        className: "form-control phoneNbr",
+                        autoComplete: "off",
+                        'aria-required': true,
+                        'aria-label': `${props.scriptingJson[constantValues._LBL_ENTER]} ${props.scriptingJson[constantValues._LBL_ACCOUNT_INFO_SECURITY_PIN]}`
+                    },
+                    showAriaLive: true,
+                    value: !_.isEmpty(props.createAccountFormInfo) && !_.isEmpty(props.createAccountFormInfo["securityPin1"]) && !_.isEmpty(props.createAccountFormInfo["securityPin1"].value) ? props.createAccountFormInfo["securityPin1"].value : '',
+                    label: props.scriptingJson[constantValues._LBL_FORM_CONFIRM_SECURITY_PIN],
+                    validation: {
+                        required: true,
+                        maxLength: 4,
+                        minLength: 4,
+                        onlyDigitsAllowed: true,
+                        comparedField: true,
+                        matchFields: ["createAccountSecurityPin", "createAccountConfirmSecurityPin"],
+                    },
+                    errorDescriptions: {
+                        isMandatoryError: props.scriptingJson[constantValues._ERR_MANDATORY_SECURITY_PIN],
+                        isLimitExceedError: props.scriptingJson[constantValues._ERR_LIMIT_EXCEED_SECURITY_PIN],
+                        isLimitShortError: props.scriptingJson[constantValues._ERR_LIMIT_SHORT_SECURITY_PIN],
+                        isInvalidError: props.scriptingJson[constantValues._ERR_INVALID_SECURITY_PIN],
+                        onlyDigitsAllowedError: props.scriptingJson[constantValues._ERR_ONLY_DIGITS_ALLOWED] ? props.scriptingJson[constantValues._ERR_ONLY_DIGITS_ALLOWED] : constantValues._ERR_ONLY_DIGITS_ALLOWED,
+                        notMatchError: props.scriptingJson[constantValues._ERROR_INDIRECT_INVALID_SECURITYPIN]
+                    },
+                    showViewOption: true,
+                    isValid: !_.isEmpty(props.createAccountFormInfo) && !_.isEmpty(props.createAccountFormInfo["securityPin1"]) && !_.isEmpty(props.createAccountFormInfo["securityPin1"].value),
+                    touched: !_.isEmpty(props.createAccountFormInfo) && !_.isEmpty(props.createAccountFormInfo["securityPin1"]) && !_.isEmpty(props.createAccountFormInfo["securityPin1"].value)
+
+
+                } : {},
+                googleReCaptcha: {
+                    fieldFormat: 'single',
+                    fieldType: 'reCaptcha',
+                    value: props.recaptchaToken,
+                    isHidden: props.disableCaptcha === 'true' ? true : false,
+                    validation: {
+                        required: props.disableCaptcha === 'true' ? false : true
+                    },
+                    isValid: !_.isEmpty(props.recaptchaToken) || (props.disableCaptcha === 'true' ? true : false)
+                }
+            },
+            formIsValid: false,
+            formType: constantValues.FORM_TYPE_CREATE_ACCOUNT,
+            pronounDefinition: {
+                config: {
+                    "fieldFormat": "single",
+                    "id": "pronoun",
+                    "fieldType": "dropdown",
+                    "elementType": "li",
+                    "elementConfig": {
+                        "className": "option",
+                        "tabIndex": "-1"
+                    },
+                    "options": [
+                        {
+                            "displayValue": SHE_HER,
+                            "value": SHE_HER
+                        },
+                        {
+                            "displayValue": HE_HIM,
+                            "value": HE_HIM
+                        },
+                        {
+                            "displayValue": THEY_THEM,
+                            "value": THEY_THEM
+                        },
+                        {
+                            "displayValue": LBL_OTHER,
+                            "value": LBL_OTHER
+                        }
+                    ],
+                    "accessible": true,
+                    "displayValue": "",
+                    "value": "",
+                    "label": "Pronoun",
+                    "isValid": false
+                }
+            },
+            _createAccountFields: createAccountFields
+        }
+    }
+
+    /* This function is used to let React know if a component’s output is not affected by the current change in state or props
+     * This method is invoked before rendering when new props or state are being received
+     */
+    shouldComponentUpdate(nextProps, nextState) {
+        /* get email from fbUserDetails (current props of the class) */
+        const fbUserDetailCurrentEmail = !_.isEmpty(this.props.fbUserDetails) ? this.props.fbUserDetails.email : null;
+        /* get email from fbUserDetails (next props of the class) */
+        const fbUserDetailNextEmail = !_.isEmpty(nextProps.fbUserDetails) ? nextProps.fbUserDetails.email : null;
+        const emailCheckUpdate = (this.props.validRealEmailCheckError !== nextProps.validRealEmailCheckError || this.props.validRealEmailCheckLoading !== nextProps.validRealEmailCheckLoading);
+        if (fbUserDetailCurrentEmail !== fbUserDetailNextEmail || this.props.recaptchaToken !== nextProps.recaptchaToken || emailCheckUpdate) {
+            /* Updating the state to update the form data with the provided formDefinition on user based action.
+            * We are validating the below mentioned condition to ensure it is executed only on particular user action */
+            this.setState(prevState => {
+                return {
+                    updateFormState: !prevState.updateFormState
+                }
+            });
+        }
+        return true;
+    }
+
+    componentDidUpdate(prevProps, prevState) {
+        if (prevProps.validRealEmailCheck != this.props.validRealEmailCheck && this.props.validRealEmailCheck) {
+            if(this.state.emailValidationData){
+                this.registerAccountHandler(this.state.emailValidationData);
+            }else{
+                this.registerAccountHandler();
+            }
+        }
+    }
+
+    /**
+     * This function modifies the state parameters
+     * @param {NONE}
+     * @returns {*|Object}
+     **/
+    switchModalViewHandler = (modal) => {
+        if (!_.isEmpty(modal) && modal === constantValues.LEARN_MORE_MODAL) {
+            /*Switch the state of showLearnMoreModal*/
+            this.setState(prevState => {
+                if (prevState.showLearnMoreModal) {
+                    /* remove the `modal-open` class to HTML body tag to disable scroll property on modal */
+                    if (!this.props.openCreateAccountInModal) {
+                        authDetailDataUtil.removeLoader();
+                    }
+                    if (!_.isNull(this.learnMoreLinkRef.current))
+                        this.learnMoreLinkRef.current.focus();
+                }
+
+                return {
+                    showLearnMoreModal: !prevState.showLearnMoreModal,
+                    modalName: constantValues.LEARN_MORE_MODAL
+                }
+            })
+
+        } else if (!_.isEmpty(modal) && modal === constantValues.WHAT_IS_THIS_MODAL) {
+            /*Switch the state of showWhatIsThisModal*/
+            this.setState(prevState => {
+                if (prevState.showWhatIsThisModal) {
+                    /* remove the `modal-open` class to HTML body tag to disable scroll property on modal */
+                    if (!this.props.openCreateAccountInModal) {
+                        authDetailDataUtil.removeLoader();
+                    }
+                    if (!_.isNull(this.whatIsThisLinkRef.current))
+                        this.whatIsThisLinkRef.current.focus();
+                }
+
+                return {
+                    showWhatIsThisModal: !prevState.showWhatIsThisModal,
+                    modalName: constantValues.WHAT_IS_THIS_MODAL
+                }
+            })
+        }
+    }
+
+
+
+    emailCheckAndRegisterAccountHandler = (data) => {
+        if (data) {
+            this.setState({ emailValidationData: data });
+        }
+        const email = data ? data.email : this.props.createAccountFormInfo["emailAddress"].value;
+        let customerObj = {
+            "customer": {
+                "individualIdentification": {
+                    "username": email
+                },
+                "contactMedium": [
+                    {
+                        "mediumType": "email"
+                    }
+                ]
+            }
+        }
+        const REAL_EMAIL_CHECK_API_PATH_URL = this.props.scriptingJson[constantValues.API_DOMAIN] + this.props.scriptingJson[constantValues.REAL_EMAIL_CHECK_API_PATH] + `?client_id=${this.props.scriptingJson[constantValues.API_CLIENT_ID]}`;
+        let apiData = AppUtil.getFullApiPayload(customerObj, this.props.scriptingJson)
+        this.props.onInitValidRealEmailCheck(REAL_EMAIL_CHECK_API_PATH_URL, apiData);
+    }
+
+    handleButtonClick = () => {
+        this.setState({ displayAddressValidationModal: true })
+    }
+
+    regexOnlyDateHandle = (event, count) => {
+        let value = event.target.value;
+        value = value.replace(/[^0-9]/g, '');
+        let month = value.slice(0, 2);
+        let day = value.slice(2, 4);
+        // Validate month (MM)
+        if (month.length === 1) {
+            if (month > '1') month = '0' + month;
+            // If >1, prepend 0 (e.g., "2" -> "02") 
+        } else if (month.length === 2) {
+            if (parseInt(month, 10) > 12 || month === '00') return;  // Reject invalid month 
+        }
+        // Validate day (DD)
+        if (day.length === 1) {
+            if (day > '3') day = '0' + day; // Prepend 0 for single digit >3 (e.g., "4" -> "04")
+        } else if (day.length === 2) {
+            if (parseInt(day, 10) > 31 || day === '00') return; // Reject invalid day 
+        }
+        // Format value with "/"
+        if (value.length > 2) {
+            value = `${month}/${day}`;
+        } else { value = month; }
+        // Limit the input to 5 characters (MM/DD)
+        if (value.length > 5) {
+            value = value.slice(0, 5);
+        }
+        // Update state using the common handleChange method
+        this.handleChange({
+            target: { name: 'birthDate', value: value },
+        });
+    };
+
+    checkBirthdayVal = (event) => {
+        const value = event?.target?.value || '';
+        const ele = document.querySelector('#birthDateInfoerror');
+        if (ele) {
+            document.querySelector('#birthDateInfoerror').classList.add('d-none');
+        }
+        // Regular expression for MM/DD
+        const isValidFormat = /^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])$/.test(value);
+        if (isValidFormat && value.length > 0) {
+            this.setState({ birthDateValid: true })
+            if (ele) {
+                document.querySelector('#birthDateInfoerror').classList.remove('d-none');
+            }
+        }
+
+
+    }
+
+    formatDateToDDMMYYYY = (date) => {
+        const [month, day] = date.split("/");
+        this.setState({ formattedBirthdate: `${month}-${day}-1752` });
+        return `${day}-${month}-1752`;
+    };
+    handleChange = (event) => {
+        const { name, value } = event.target;
+        if (name === "phoneNumber") {
+            // Allow only digits and up to 14 characters while typing
+            if (/^\d*$/.test(value) && value.length <= 10) {
+                this.setState({ [name]: value });
+            }
+        } else if (name === "zipCode") {
+            if (/^\d*$/.test(value) && value.length <= 5) {
+                this.setState({ [name]: value });
+            }
+        } else {
+            this.setState({ [name]: value }, () => {
+                //after birthDate is updated
+                if (name === "birthDate") {
+                    const formattedDate = this.formatDateToDDMMYYYY(value);
+                    this.setState({ formattedDate });
+                }
+            });
+        }
+    };
+
+    selectValue = (val) => {
+        this.setState({ pronoun: val, isOpen: false });
+    };
+
+    validateAddressHandler = (query, country, addressFormName, unverifiedAddressData, callCreateAccount) => {
+        this.setState({ isUnitCalled: false });
+        if (callCreateAccount && (callCreateAccount === true || callCreateAccount === 'true')) {
+            this.setState({ isUnitCalled: true })
+        }
+        this.setState({ addressLin2Unit: null })
+        if (unverifiedAddressData && unverifiedAddressData?.addressLine2) {
+            this.setState({ addressLin2Unit: unverifiedAddressData.addressLine2 })
+        }
+
+        /* Prepare API URL */
+        const VALIDATE_ADDRESS_URL = this.props.scriptingJson[constantValues.API_DOMAIN] + this.props.scriptingJson[constantValues.ADDRESS_VALIDATION_API_PATH] + `?query=${query}&country=USA`;
+        /* Add or Update shipping method*/
+        this.props.onInitValidateAddress(
+            VALIDATE_ADDRESS_URL,
+            this.props.scriptingJson[constantValues.API_CLIENT_ID],
+            addressFormName,
+            this.props.scriptingJson[constantValues.API_LANGUAGE]
+        );
+
+    }
+
+    //preparing data for address validation modal 
+    updateDataInStoreHandler = (reviewModeStatusJson, stepName, isReviewObject) => {
+        // console.log(reviewModeStatusJson);
+        this.setState({ displayAddressValidationModal: false });
+        this.props.onInitFormDetailUpdateInStore(reviewModeStatusJson, stepName, isReviewObject)
+        //    dispatch(actions.initFormDetailUpdateInStore(reviewModeStatusJson, stepName, isReviewObject))
+    }
+    handleSuggestedAddressSelectionHandler = () => {
+        //  console.log('suggested address triggered');
+        let updateShippingInfoData = null;
+        let formData = { ...this.props?.shippingInfo };
+        if (this.props.validatedFormName === constantValues.FORM_TYPE_SAVED_SHIPPING_ADDRESS) {
+            updateShippingInfoData = { ...formData, ...this.propsvalidatedAddressData };
+            if (!_.isEmpty(updateShippingInfoData) && !_.isEmpty(updateShippingInfoData["phoneIMEI"]) && !_.isEmpty(updateShippingInfoData["phoneIMEI"].value)) {
+            } else {
+                /* updated the mobileProtectionReviewData related Data in store */
+                const dataArrayForStore = [
+                    [checkoutDetailDataUtil.getHPPEnrollmentCustomerData(updateShippingInfoData, this.propsscriptingJson[constantValues.API_BRAND_NAME]), "mobileProtectionReviewData", true],
+                    [updateShippingInfoData, constantValues.FORM_TYPE_SAVED_SHIPPING_ADDRESS, false],
+                    [{ "status": true }, "isMobileProtectionReview", true]
+                ];
+                /* updated the mobileProtectionReviewData related Data in store */
+
+                this.updateMultipleDataInStoreHandler(dataArrayForStore);
+                this.handleButtonClickCreateAccount(true); // setting isSuggested value to true
+            }
+        }
+    }
+
+    handleButtonClickCreateAccount = (isSuggested = false) => {
+        let Additionalinfo = this.props?.shippingInfo;
+        let AdditionalAddressInfo = this.props?.shippingAddressInfo;
+        if (isSuggested) {
+            this.handleMoreDetailsApiCall(Additionalinfo, this.props.validatedAddressData);
+        } else {
+            this.handleMoreDetailsApiCall(Additionalinfo, AdditionalAddressInfo);
+        }
+
+
+        this.setState({ displayAddressValidationModal: false });
+    };
+
+    handleMoreDetailsApiCall = (nameNumber, address) => {
+
+        /*create the customer object to pass in api.*/
+        let customerObject = this.state.customerObj;
+        /* trigger the createAccount call by passing customer object*/
+        if (!_.isEmpty(customerObject)) {
+            if (window.checkIsForgeRockEnabled()) {
+                customerObject = {
+                    ...customerObject,
+                    "firstName": this.state.frFirstName,
+                    "lastName": this.state.frLastName,
+                }
+            }
+            else{
+                customerObject = {
+                    ...customerObject,
+                    "firstName": this.props.createAccountFormInfo["firstName"].value,
+                    "lastName": this.props.createAccountFormInfo["lastName"].value,
+                }
+            }
+            customerObject = {
+                ...customerObject,
+                "birthDate": this.state.formattedBirthdate,
+                "contactMedium": [
+                    {
+                        "mediumType": "telephoneNumber",
+                        "contactDetails": {
+                            "phoneNumber": nameNumber?.phoneNumber?.value
+                        }
+                    },
+                    {
+                        "mediumType": "postalAddress",
+                        "contactDetails": {
+                            "addressLine1": address?.addressLine1?.value,
+                            "addressLine2": address?.addressLine2?.value,
+                            "city": address?.city?.value,
+                            "country": address?.country?.value,
+                            "stateOrProvince": address?.stateOrProvince?.value,
+                            "zipcode": address?.zipCode?.value
+                        }
+                    },
+                    {
+                        "contactDetails": {
+                            "phoneNumber": nameNumber?.phoneNumber?.value
+                        }
+                    }
+                ],
+            }
+        }
+
+        const getNameNumberFlag = (nameNumber) => {
+            const { firstName, lastName, phoneNumber } = nameNumber || {};
+
+            // Check if all properties are empty
+            if (!firstName && !lastName && !phoneNumber?.value) {
+                return false; // No values provided
+            }
+
+            // Check if phonenumber is provided and its isValid property
+            if (phoneNumber?.value && !phoneNumber.isValid) {
+                return false; // phonenumber provided but is not valid
+            }
+
+            // Return true if firstname or lastname is provided, or phonenumber is valid
+            return !!firstName || !!lastName || (phoneNumber?.value && phoneNumber.isValid);
+        };
+
+        const getAddressFlag = (address) => {
+            const { addressLine1, zipCode, city, country, stateOrProvince } = address || {};
+            // Check if all properties are empty
+            if (!addressLine1 && !zipCode?.value && !city && !country && !stateOrProvince) {
+                return false; // No values provided
+            }
+
+            // Check if zipCode is provided and its isValid property
+            if (zipCode?.value && !zipCode.isValid) {
+                return false; // phonenumber provided but is not valid
+            }
+
+            // Return true if address values are provided , or phonenumber is valid
+            return !!addressLine1 || !!city || !!country || !!stateOrProvince || (zipCode?.value && zipCode.isValid);
+        };
+
+
+        let isAllInfoValuesFlag, isAllAddressValuesFlag;
+        const isAnyValueNotNull = (obj) => {
+            if (typeof obj === 'undefined') {
+                return false; // Return false if the object is undefined
+            }
+            // Return true if at least one value is not null
+
+            return Object.values(obj).some(value => value !== null);
+        };
+        let nameNumberFlag = isAnyValueNotNull(nameNumber);
+        let addressFlag = isAnyValueNotNull(address);
+
+        if (nameNumberFlag) {
+            if (nameNumber.phoneNumber.isValid) {
+
+            }
+            isAllInfoValuesFlag = true;
+        } else {
+            isAllInfoValuesFlag = false;;
+        }
+
+        if (addressFlag) {
+            isAllAddressValuesFlag = true;
+        } else {
+            isAllAddressValuesFlag = false;;
+        }
+
+
+
+
+        if (getNameNumberFlag(nameNumber) || getAddressFlag(address) || (!_.isEmpty(this.state.formattedBirthdate)) || (!_.isEmpty(this.state.pronoun))) {
+            if (!_.isEmpty(customerObject)) {
+                this.props.createAccount(customerObject);
+            }
+        }
+
+    }
+
+
+
+    handleUnverifiedAddressSelectionHandler = () => {
+        //console.log('unverified handler triggered !!');
+
+        this.handleButtonClickCreateAccount();
+
+    }
+
+    render() {
+        /* Check validity status create account form*/
+        const createAccountFormValidity = this.state.ageConsent && checkoutDetailDataUtil.getFormValidationStatus(this.props.createAccountFormInfo);
+        const checkBoxEnableFlag = checkoutDetailDataUtil.getFormValidationStatus(this.props.createAccountFormInfo);
+        /*Get API return status for create account api*/
+        let statusMessage = null;
+        if (!_.isEmpty(this.props.createAccountData) && !_.isEmpty(this.props.createAccountData.status)) {
+            if (!_.isEmpty(this.props.createAccountData.status.code) && this.props.createAccountData.status.code === "0") {
+                statusMessage = this.props.scriptingJson[constantValues._LBL_CREATE_ACCOUNT_SUCCESS];
+            }
+        }
+       /* Detrmine class for spacing between form and title */
+        let spacingClassName = (!_.isEmpty(this.props.userAuthenticationStatus) && this.props.userAuthenticationStatus[constantValues.SHOW_CREATE_ACCOUNT]) ? "mt-30" : "mt-30 d-none";
+        if (this.props.transactionType === constantValues.CART_TRANSACTION_TYPE_ACTIVATION || this.props.transactionType === constantValues.CART_TRANSACTION_TYPE_REFILL) {
+            spacingClassName = "tab-pane fade";
+        }
+        if (this.props.openCreateAccountInModal) {
+            spacingClassName = "";
+        }
+
+        /* Determine class for buttton based on facebook authentication is enabled or not */
+        let buttonClass = !_.isEmpty(this.props.enableFacebookAuth) && this.props.enableFacebookAuth === 'true' ? 'extra-large' : 'large';
+        /** Determine class for buttton based on facebook authentication is enabled or not */
+        let rememberMeDivClass = this.props.transactionType === constantValues.CART_TRANSACTION_TYPE_ACTIVATION || this.props.transactionType === constantValues.CART_TRANSACTION_TYPE_REFILL ? "remember-me-checkbox custom-control custom-checkbox-spa mt-auto" : "custom-control custom-checkbox-spa mt-auto"; // Default for v1
+        if (/\b(v2|v3)\b/i.test(this.props.componentVersion)) {
+            if (this.props.transactionType === constantValues.CART_TRANSACTION_TYPE_ACTIVATION || this.props.transactionType === constantValues.CART_TRANSACTION_TYPE_REFILL) {
+                rememberMeDivClass = `remember-me-checkbox custom-control custom-checkbox-spa mt-auto pl-0 pb-10 ${/\b(v3)\b/i.test(this.props.componentVersion) ? 'd-flex' : ''}`;
+                buttonClass += " text-lg-left mt-40";
+            } else {
+                rememberMeDivClass = `custom-control custom-checkbox-spa mt-auto pl-0 ${/\b(v3)\b/i.test(this.props.componentVersion) ? 'd-flex' : ''} `;
+            }
+        }
+        const isCheckboxEnabled = this.isInputProvided();
+        const isAccountCreateButtonEnabled = this.isInputProvided();
+        const isContinueButtonEnabled = this.isAdditionalInfoProvided();
+        const isHasPasswordAndCheckboxUnchecked = this.isCreateAccountButtonDisable()
+        const isRealValidEmailCheckEnabled = this.props.scriptingJson[constantValues.ENABLE_ACCOUNT_CREATION_VALIDATION] === "true" ? true : true;
+        const {
+            birthDate,
+
+        } = this.state;
+        const Pronouns = [SHE_HER, HE_HIM, THEY_THEM, LBL_OTHER];
+
+        return (<div>
+            <React.Fragment>
+                {this.props.createAccountLoading && <Backdrop show={this.props.createAccountLoading} />}
+                {/\b(v1)\b/i.test(this.props.componentVersion) &&
+                    this.props.createAccountLoading && <div className="inline-loader">
+                        <img className="loaderplp loader-animation" alt="" src={`/etc.clientlibs/${this.props.scriptingJson?.rootBrandPathName}/clientlibs/clientlib-base/resources/loader/loader.gif`} />
+                    </div>
+                }
+
+                <p className={!_.isEmpty(this.props.userAuthenticationStatus) && this.props.userAuthenticationStatus[constantValues.SHOW_CREATE_ACCOUNT] ? "heading-four font-weight-bold text-center text-lg-left" : "heading-four font-weight-bold text-center text-lg-left d-none"}>{this.props.headlineCreateAccount}</p>
+                <div id="tab2" className={spacingClassName}>
+                    {window.checkIsForgeRockEnabled() ?
+                        <React.Fragment>
+                            {this.state.showMoreDetails ?
+                                <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+                                    {/* <div className="container-fluid more-account-details">
+                                        <div className="container" style={{ display: "block" }} > */}
+                                    <form >
+                                        <div className="md-form input-group alternate bg-soft-grey mt-0 mb-0">
+                                            <div className="cutom-input">
+                                                <MoreInfoDetails
+                                                    scriptingJson={this.props.scriptingJson}
+                                                    shippingInfo={this.props.shippingInfo}
+                                                    phoneNumberCheck={true}
+                                                    isTracfone={true}
+                                                />
+                                                <div className="row ml-0 mr-0">
+                                                    <div className="col-6 pb-10 pl-0 pr-3">
+                                                        <div className="md-form input-group alternate mt-0 mb-0 bg-soft-grey">
+                                                            <label htmlFor={"BirthDate"} className={birthDate ? "checkoutLabel active" : "checkoutLabel"}>{LBL_BIRTHDATE}</label>
+                                                            <input
+                                                                maxLength={5}
+                                                                id="birthDate"
+                                                                onChange={(event) => {
+                                                                    { this.regexOnlyDateHandle(event, 4) }
+                                                                }}
+                                                                onBlur={(event) => { { this.checkBirthdayVal(event) } }}
+                                                                aria-label={LBL_BIRTHDATE}
+                                                                value={birthDate}
+                                                                name="birthDate"
+                                                                type="text"
+                                                                className='form-control'
+                                                            />
+                                                            <p id="birthDateInfoerror" aria-live="off" class="error-text legal mt-10 d-none">{this.props.scriptingJson?._TF_ERR_INVALID_BIRTHDATE}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="col-6 pb-10 pr-0 pl-3">
+
+                                                        <FormDropDown
+                                                            key={"pronoun"}
+                                                            formElement={this.state.pronounDefinition}
+                                                            inputChangedHandler={this.selectValue}
+                                                            formType={"pronoun"}
+                                                            pronounValue={this.state.pronoun}
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <h3 className="text-left mt-25 mb-25 text-white">{LBL_PROFILE_ADDRESS}</h3>
+                                                    <MoreInfoAddressDetails
+                                                        scriptingJson={this.props.scriptingJson}
+                                                        shippingInfo={this.props.shippingAddressInfo}
+                                                    />
+                                                </div>
+                                                <div className="large primary-btn mt-10 mb-20 text-center mr-auto ml-auto">
+                                                    <button
+                                                        // key={!isEnabled}
+                                                        type="button"
+                                                        disabled={!isContinueButtonEnabled}
+                                                        className="btn"
+                                                        buttonClass="medium primary-btn bg-danger mr-auto ml-auto"
+                                                        id="user-create-account-continue-button"
+                                                        data-gtm-placement="checkout_login"
+                                                        data-gtm-cta="create_account_continue"
+                                                        aria-label="continue"
+                                                        onClick={this.handleButtonClick}
+                                                    >
+                                                        {this.props.scriptingJson[constantValues._BTN_CONTINUE]}
+                                                    </button>
+                                                </div>
+                                            </div>
+
+
+
+                                        </div>
+                                    </form>
+
+                                    {/* </div> */}
+
+                                    <>
+                                        {(this.state.displayAddressValidationModal) && <> <Backdrop show={this.state.displayAddressValidationModal} clicked={() => this.props.updateDataInStoreHandler(null, "validatedAddressVerifyLevel", false)} />
+                                            <AddressValidationModal
+                                                scriptingJson={this.props.scriptingJson}
+                                                validatedFormName={this.props.validatedFormName}
+                                                validatedAddressData={this.props.validatedAddressData}
+                                                unverifiedAddressData={{
+                                                    "firstName": this.props?.shippingInfo?.firstName?.value?.trim() || "",
+                                                    "lastName": this.props?.shippingInfo?.lastName?.value?.trim() || "",
+                                                    "addressLine1": this.props?.shippingAddressInfo?.addressLine1?.value || "",
+                                                    "addressLine2": this.props?.shippingAddressInfo?.addressLine2?.value || "",
+                                                    "city": this.props?.shippingAddressInfo?.city?.value || '',
+                                                    "stateOrProvince": this.props?.shippingAddressInfo?.stateOrProvince?.value || "",
+                                                    "zipCode": this.props?.shippingAddressInfo?.zipCode?.value || "",
+                                                    "phoneNumber": this.props?.shippingInfo.phoneNumber?.value || "",
+                                                    "country": this.props?.shippingAddressInfo?.country?.value || ""
+                                                }}
+                                                validatedAddressVerifyLevel={this.props.validatedAddressVerifyLevel}
+                                                validateAddress={(query, country, addressFormName, unverifiedAddressData, callCreateAccount) => this.validateAddressHandler(query, country, addressFormName, unverifiedAddressData, callCreateAccount)}
+                                                updateDataInStoreHandler={(reviewModeStatusJson, stepName, isReviewObject) => this.updateDataInStoreHandler(reviewModeStatusJson, stepName, isReviewObject)}
+                                                useSuggestedAddressSelectionHandler={() => { this.handleSuggestedAddressSelectionHandler() }}
+                                                useUnverifiedAddressSelectionHandler={() => { this.handleUnverifiedAddressSelectionHandler() }}
+                                                style={this.state.displayAddressValidationModal ? constantValues.MODAL_STYLE : constantValues.MODAL_STYLE_NONE} /> </>}
+                                    </>
+                                    {/* </div> */}
+                                </div>
+                                :
+                                <span className="value-ui-component-wrapper">
+                                    <UserCreateAccountValueUi
+                                        registerAccountHandler={this.registerAccountHandler}
+                                        switchModalViewHandler={this.switchModalViewHandler}
+                                        emailCheckAndRegisterAccountHandler={this.emailCheckAndRegisterAccountHandler}
+                                        createAccountRememberMeRef={this.createAccountRememberMeRef}
+                                        createAccountFormValidity={createAccountFormValidity}
+                                        showAgentConsent={this.state.showAgentConsent}
+                                        checkBoxEnableFlag={checkBoxEnableFlag}
+                                        showRememberMe={this.state.showRememberMe}
+                                        createAccountFields={this.state._createAccountFields}
+                                        {...this.props}
+                                    />
+                                </span>
+                            }
+                        </React.Fragment> :
+
+                        <>
+                            {this.state.showMoreDetails ?
+                                <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+                                    {/* <div className="container-fluid more-account-details">
+                                        <div className="container" style={{ display: "block" }} > */}
+                                    <form >
+                                        <div className="md-form input-group alternate bg-soft-grey mt-0 mb-0">
+                                            <div className="cutom-input">
+                                                <MoreInfoDetails
+                                                    scriptingJson={this.props.scriptingJson}
+                                                    shippingInfo={this.props.shippingInfo}
+                                                    phoneNumberCheck={true}
+                                                    isTracfone={true}
+                                                />
+                                                <div className="row ml-0 mr-0">
+                                                    <div className="col-6 pb-10 pl-0 pr-3">
+                                                        <div className="md-form input-group alternate mt-0 mb-0 bg-soft-grey">
+                                                            <label htmlFor={"BirthDate"} className={birthDate ? "checkoutLabel active" : "checkoutLabel"}>{LBL_BIRTHDATE}</label>
+                                                            <input
+                                                                maxLength={5}
+                                                                id="birthDate"
+                                                                onChange={(event) => {
+                                                                    { this.regexOnlyDateHandle(event, 4) }
+                                                                }}
+                                                                onBlur={(event) => { { this.checkBirthdayVal(event) } }}
+                                                                aria-label={LBL_BIRTHDATE}
+                                                                value={birthDate}
+                                                                name="birthDate"
+                                                                type="text"
+                                                                className='form-control'
+                                                            />
+                                                            <p id="birthDateInfoerror" aria-live="off" class="error-text legal mt-10 d-none">{this.props.scriptingJson?._TF_ERR_INVALID_BIRTHDATE}</p>
+
+                                                        </div>
+                                                    </div>
+                                                    <div className="col-6 pb-10 pr-0 pl-3">
+
+                                                        <FormDropDown
+                                                            key={"pronoun"}
+                                                            formElement={this.state.pronounDefinition}
+                                                            inputChangedHandler={this.selectValue}
+                                                            formType={"pronoun"}
+                                                            pronounValue={this.state.pronoun}
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <h3 className="text-left mt-25 mb-25 text-white">{LBL_PROFILE_ADDRESS}</h3>
+                                                    <MoreInfoAddressDetails
+                                                        scriptingJson={this.props.scriptingJson}
+                                                        shippingInfo={this.props.shippingAddressInfo}
+                                                    />
+                                                </div>
+                                                <div className="large primary-btn mt-10 mb-20 text-center mr-auto ml-auto">
+                                                    <button
+                                                        // key={!isEnabled}
+                                                        type="button"
+                                                        disabled={!isContinueButtonEnabled}
+                                                        className="btn"
+                                                        buttonClass="medium primary-btn bg-danger mr-auto ml-auto"
+                                                        id="user-create-account-continue-button"
+                                                        data-gtm-placement="checkout_login"
+                                                        data-gtm-cta="create_account_continue"
+                                                        aria-label="continue"
+                                                        onClick={this.handleButtonClick}
+                                                    >
+                                                        {this.props.scriptingJson[constantValues._BTN_CONTINUE]}
+                                                    </button>
+                                                </div>
+                                            </div>
+
+
+
+                                        </div>
+                                    </form>
+
+                                    {/* </div> */}
+
+                                    <>
+                                        {(this.state.displayAddressValidationModal) && <> <Backdrop show={this.state.displayAddressValidationModal} clicked={() => this.props.updateDataInStoreHandler(null, "validatedAddressVerifyLevel", false)} />
+                                            <AddressValidationModal
+                                                scriptingJson={this.props.scriptingJson}
+                                                validatedFormName={this.props.validatedFormName}
+                                                validatedAddressData={this.props.validatedAddressData}
+                                                unverifiedAddressData={{
+                                                    "firstName": this.props?.shippingInfo?.firstName?.value?.trim() || "",
+                                                    "lastName": this.props?.shippingInfo?.lastName?.value?.trim() || "",
+                                                    "addressLine1": this.props?.shippingAddressInfo?.addressLine1?.value || "",
+                                                    "addressLine2": this.props?.shippingAddressInfo?.addressLine2?.value || "",
+                                                    "city": this.props?.shippingAddressInfo?.city?.value || '',
+                                                    "stateOrProvince": this.props?.shippingAddressInfo?.stateOrProvince?.value || "",
+                                                    "zipCode": this.props?.shippingAddressInfo?.zipCode?.value || "",
+                                                    "phoneNumber": this.props?.shippingInfo.phoneNumber?.value || "",
+                                                    "country": this.props?.shippingAddressInfo?.country?.value || ""
+                                                }}
+                                                validatedAddressVerifyLevel={this.props.validatedAddressVerifyLevel}
+                                                validateAddress={(query, country, addressFormName, unverifiedAddressData, callCreateAccount) => this.validateAddressHandler(query, country, addressFormName, unverifiedAddressData, callCreateAccount)}
+                                                updateDataInStoreHandler={(reviewModeStatusJson, stepName, isReviewObject) => this.updateDataInStoreHandler(reviewModeStatusJson, stepName, isReviewObject)}
+                                                useSuggestedAddressSelectionHandler={() => { this.handleSuggestedAddressSelectionHandler() }}
+                                                useUnverifiedAddressSelectionHandler={() => { this.handleUnverifiedAddressSelectionHandler() }}
+                                                style={this.state.displayAddressValidationModal ? constantValues.MODAL_STYLE : constantValues.MODAL_STYLE_NONE} /> </>}
+                                    </>
+                                    {/* </div> */}
+                                </div>
+                                :
+                                <>
+                                    <CreateAccountModalForm
+                                        key={this.state.consentTbvCheckbox}
+                                        state={this.state}
+                                        scriptingJson={this.props.scriptingJson}
+                                        formDefinition={this.state.formDefinition}
+                                        updateFormState={this.state.updateFormState}
+                                        passwordFieldValue={!_.isEmpty(this.props.createAccountFormInfo) && !_.isEmpty(this.props.createAccountFormInfo.password) ? this.props.createAccountFormInfo.password.value : null}
+                                        activationFlow={this.props.activationFlow} />
+
+
+
+
+                                    {this.state.showRememberMe ?
+                                        <React.Fragment>
+                                            <div className="d-flex justify-content-between">
+                                                <div className={rememberMeDivClass}>
+                                                    <input
+                                                        type="checkbox"
+                                                        className="custom-control-input"
+                                                        id="createAccountRememberMe"
+                                                        ref={this.createAccountRememberMeRef}
+                                                        name="createAccountRememberMe" />
+                                                    <label className="custom-control-label" htmlFor="createAccountRememberMe">
+                                                        {/\b(v1)\b/i.test(this.props.componentVersion) ?
+                                                            <div className="mb-30">
+                                                                <p className="caption-one text-color-grey mt-10">{this.props.scriptingJson ? this.props.scriptingJson[constantValues._LINK_REMEMBER_ME] : constantValues._LINK_REMEMBER_ME}</p>
+                                                            </div> : null
+                                                        }
+                                                        {/\b(v2|v3)\b/i.test(this.props.componentVersion) ?
+                                                            <>
+                                                                <div className="mt-05 mb-05">
+                                                                    <p className="caption-one text-color-grey">{this.props.scriptingJson ? this.props.scriptingJson[constantValues._LINK_REMEMBER_ME] : constantValues._LINK_REMEMBER_ME}</p>
+                                                                </div>
+                                                            </>
+                                                            : null}
+                                                    </label>
+                                                    {/\b(v1|v3)\b/i.test(this.props.componentVersion) ?
+                                                        <Tooltip
+                                                            className="ml-10"
+                                                            ariaLabel={this.props.scriptingJson[constantValues._LBL_MORE_INFO_ABOUT_REMEMBER_ME_TOOLTIP]}
+                                                            tooltipContent={this.props.scriptingJson[constantValues._LBL_REMEMBER_ME_TOOLTIP]}
+                                                            tooltipConfig={{ events: { onClick: true, onBlur: false }, id: 'createAccountRememberMeToolTip' }}
+                                                        />
+                                                        : null}
+                                                </div>
+
+                                                {!/\b(v1|v3)\b/i.test(this.props.componentVersion) ?
+                                                    <div>
+                                                        {/* eslint-disable-next-line */}
+                                                        <a
+                                                            onClick={() => this.switchModalViewHandler(constantValues.WHAT_IS_THIS_MODAL)}
+                                                            onKeyPress={(event) => { if (event.key === "Enter") { this.switchModalViewHandler(constantValues.WHAT_IS_THIS_MODAL) } }}
+                                                            tabIndex={constantValues.TAB_INDEX_ZERO}
+                                                            data-keyboard="true"
+                                                            data-toggle="modal"
+                                                            data-target={`#${constantValues.WHAT_IS_THIS_MODAL}`}
+                                                            role="button"
+                                                            className={this.props.transactionType === constantValues.CART_TRANSACTION_TYPE_ACTIVATION || this.props.transactionType === constantValues.CART_TRANSACTION_TYPE_REFILL ? "caption-two text-color-grey border-bottom-grey pt-10" : "legal border-bottom-tech learn-more-link pt-10 pl-0 pr-0"} ref={this.whatIsThisLinkRef}>
+                                                            {this.props.whyNeedThisLinkText}
+                                                        </a>
+                                                    </div>
+                                                    : null}
+                                            </div>
+                                            <div className="text-left" style={{ marginLeft: '0' }} ref={this.learnMoreDisplayRef}>
+                                                {!/\b(v1|v3)\b/i.test(this.props.componentVersion) ?
+                                                    /* eslint-disable-next-line */
+                                                    <a
+                                                        onClick={() => this.switchModalViewHandler(constantValues.LEARN_MORE_MODAL)}
+                                                        tabIndex={constantValues.TAB_INDEX_ZERO}
+                                                        data-keyboard="true"
+                                                        onKeyPress={(event) => { if (event.key === "Enter") { this.switchModalViewHandler(constantValues.LEARN_MORE_MODAL) } }}
+                                                        data-toggle="modal"
+                                                        role='button'
+                                                        data-target={`#${constantValues.LEARN_MORE_MODAL}`}
+                                                        className={this.props.transactionType === constantValues.CART_TRANSACTION_TYPE_ACTIVATION || this.props.transactionType === constantValues.CART_TRANSACTION_TYPE_REFILL ? "caption-two text-color-grey border-bottom-grey d-inline-block" : "legal border-bottom-tech learn-more-link d-inline-block pl-0 pr-0"} ref={this.learnMoreLinkRef}>
+                                                        {this.props.learnMoreLinkText}
+                                                    </a>
+                                                    : null}
+                                            </div>
+                                        </React.Fragment>
+                                        : null}
+                                    {this.props.twoFAInfoLink && !this.props.isTabletFlow ?
+                                        <div>
+                                            <span><p className="caption-two text-color-grey mt-20">{this.props.scriptingJson[constantValues._PROTECT_MOBILE_IDENTITY_INFO]}&nbsp;
+                                                {/\b(v1)\b/i.test(this.props.componentVersion) ?
+                                                    <a
+                                                        aria-label={this.props.scriptingJson[constantValues._LBL_CLICK_HERE]}
+                                                        className="caption-three-bold  border-bottom-tech"
+                                                        data-gtm-cta={this.props.scriptingJson[constantValues._LBL_CLICK_HERE]}
+                                                        tabIndex={constantValues.TAB_INDEX_ZERO}
+                                                        target={constantValues.TARGET_BLANK}
+                                                        href={this.props.twoFAInfoLink}>{this.props.scriptingJson[constantValues._LBL_CLICK_HERE] ? this.props.scriptingJson[constantValues._LBL_CLICK_HERE] : constantValues._LBL_CLICK_HERE}</a> : null}
+                                                {/\b(v2|v3)\b/i.test(this.props.componentVersion) ?
+                                                    <label><a
+                                                        aria-label={this.props.scriptingJson[constantValues._LBL_CLICK_HERE_TEXT]}
+                                                        className="default-md font-weight-bold"
+                                                        data-gtm-cta={this.props.scriptingJson[constantValues._LBL_CLICK_HERE]}
+                                                        tabIndex={constantValues.TAB_INDEX_ZERO}
+                                                        target={constantValues.TARGET_BLANK}
+                                                        href={this.props.twoFAInfoLink}>{this.props.scriptingJson[constantValues._LBL_CLICK_HERE] ? this.props.scriptingJson[constantValues._LBL_CLICK_HERE] : constantValues._LBL_CLICK_HERE}</a></label> : null}
+                                            </p></span>
+                                        </div> : null}
+                                    {this.props.isTabletFlow ?
+                                        <div className="tablet-privacy-policy">
+                                            <span><p className="caption-two text-color-grey mt-20 d-inline">{this.props.scriptingJson[constantValues.TABLET_USER_ACCOUNT_PRIVACY_POLICY_TEXT]}&nbsp;
+                                                <a
+                                                    aria-label={this.props.scriptingJson[constantValues.TABLET_USER_ACCOUNT_PRIVACY_POLICY]}
+                                                    className={/STRAIGHT_TALK/i.test(this.props.scriptingJson[constantValues.API_BRAND_NAME]) ? "privacy-policy-link" : "default-md font-weight-bold"}
+                                                    data-gtm-cta={this.props.scriptingJson[constantValues.TABLET_USER_ACCOUNT_PRIVACY_POLICY]}
+                                                    tabIndex={constantValues.TAB_INDEX_ZERO}
+                                                    target={constantValues.TARGET_BLANK}
+                                                    href={this.props.scriptingJson[constantValues.TABLET_PRIVACY_POLICY_LINK]}>{this.props.scriptingJson[constantValues.TABLET_USER_ACCOUNT_PRIVACY_POLICY] ? this.props.scriptingJson[constantValues.TABLET_USER_ACCOUNT_PRIVACY_POLICY] : constantValues.TABLET_USER_ACCOUNT_PRIVACY_POLICY}</a>
+                                            </p>
+                                                <p className="caption-two text-color-grey mt-20 d-inline">{this.props.scriptingJson[constantValues.TABLET_USER_ACCOUNT_CALIFORNIA_PRIVACY_NOTICE_TEXT]}&nbsp;
+                                                    <a
+                                                        aria-label={this.props.scriptingJson[constantValues.TABLET_USER_ACCOUNT_CALIFORNIA_PRIVACY_NOTICE]}
+                                                        className={/STRAIGHT_TALK/i.test(this.props.scriptingJson[constantValues.API_BRAND_NAME]) ? "privacy-policy-link" : "default-md font-weight-bold"}
+                                                        data-gtm-cta={this.props.scriptingJson[constantValues.TABLET_USER_ACCOUNT_CALIFORNIA_PRIVACY_NOTICE]}
+                                                        tabIndex={constantValues.TAB_INDEX_ZERO}
+                                                        target={constantValues.TARGET_BLANK}
+                                                        href={this.props.scriptingJson[constantValues.TABLET_CALIFORNIA_POLICY_LINK]}>{this.props.scriptingJson[constantValues.TABLET_USER_ACCOUNT_CALIFORNIA_PRIVACY_NOTICE] ? this.props.scriptingJson[constantValues.TABLET_USER_ACCOUNT_CALIFORNIA_PRIVACY_NOTICE] : constantValues.TABLET_USER_ACCOUNT_CALIFORNIA_PRIVACY_NOTICE}</a>
+                                                </p>
+                                            </span>
+                                        </div> : null}
+                                    <div className="text-center mt-15" ref={this.consentDivRef}>
+                                        {this.state.showAgentConsent ?
+                                            <div className={this.props.transactionType === constantValues.CART_TRANSACTION_TYPE_ACTIVATION || this.props.transactionType === constantValues.CART_TRANSACTION_TYPE_REFILL ? "remember-me-checkbox custom-control custom-checkbox-spa mt-auto" : "custom-control custom-checkbox-spa mt-auto"} ref={this.consentCheckboxRef}>
+                                                {checkBoxEnableFlag ?
+                                                    <input
+                                                        type="checkbox"
+                                                        className="custom-control-input"
+                                                        id="ageConsent"
+                                                        name="check2"
+                                                        onClick={() => this.setState(prevState => { return { ageConsent: !prevState.ageConsent } })} />
+                                                    :
+                                                    <input
+                                                        type="checkbox"
+                                                        className="custom-control-input"
+                                                        id="ageConsent"
+                                                        name="check2"
+                                                        disabled
+                                                        onClick={() => this.setState(prevState => { return { ageConsent: !prevState.ageConsent } })} />}
+                                                <label className="custom-control-label" htmlFor="ageConsent">
+                                                    {/\b(v1)\b/i.test(this.props.componentVersion) ?
+                                                        <div className="mb-30">
+                                                            <p className="caption-one text-color-grey mt-10" aria-label="This Checkbox is disabled because age consent is required please provide the valid data to enable the checkbox">{this.props.ageConsent}</p>
+                                                        </div> : null
+                                                    }
+                                                    {/\b(v2|v3)\b/i.test(this.props.componentVersion) ?
+                                                        <div className="mt-05 mb-05">
+                                                            <p className={this.props.fromIndirectPay ? "text-color-grey" : "caption-one text-color-grey"} style={{ float: 'left' }}>{this.props.ageConsent}</p>
+                                                        </div> : null
+                                                    }
+                                                </label>
+                                            </div> : null}
+                                        <div className={createAccountFormValidity ? `${buttonClass} primary-btn mt-10 mb-20 ` : `${buttonClass} primary-btn mt-10 mb-20 text-center`}>
+                                            {this.props.isInspicioFlow ? (
+                                                <div>
+                                                    <div className="custom-control custom-checkbox-spa mt-auto" style={{ padding: '0px' }}>
+                                                        <input type="checkbox" className="custom-control-input"
+                                                            id="ageConsent" name="consentTbvCheckbox"
+                                                            checked={this.state.consentTbvCheckbox}
+                                                            onChange={this.handleCheckboxChange}
+
+                                                        /><label class="custom-control-label"
+                                                            for="ageConsent">
+                                                            <div className="mt-05 mb-05" style={{ marginTop: '0px' }}><p className="caption-one "
+                                                                style={{ textAlign: 'left' }}>
+                                                                {this.props.scriptingJson[constantValues._LBL_CONSENT_TOTAL_WIRELESS_ACCOUNT]}</p></div></label>
+                                                    </div>
+
+                                                    <div className="custom-control custom-checkbox-spa mt-auto" style={{ padding: '0px' }}>
+                                                        <input type="checkbox" className="custom-control-input"
+                                                            id="createAccountRememberMe" name="isRewardsEnrolled"
+                                                            checked={this.state.isRewardsEnrolled}
+                                                            onChange={this.handleCheckboxChange}
+                                                            disabled={!isCheckboxEnabled}
+                                                        /><label class="custom-control-label"
+                                                            for="createAccountRememberMe"
+                                                        ><div className="mt-05 mb-05" style={{ marginTop: '0px' }}><p className="caption-one"
+                                                            style={{ textAlign: 'left' }}>
+                                                            {this.props.scriptingJson[constantValues._LBL_CHECKBOX_ENROLL]} <a href="https://www.totalwireless.com/terms-and-conditions/my-rewards" target="_blank" style={{ textDecoration: "underline", color: "white" }}>{this.props.scriptingJson[constantValues._LBL_TERMS_TOTAL_REWARDS]}</a></p></div></label>
+                                                    </div>
+
+                                                    <p style={{ textAlign: "left" }}>
+                                                        {this.props.scriptingJson[constantValues._LBL_TW_PRIVACY_POLICY]} <a href="https://www.totalwireless.com/privacy-policy" target="_blank" style={{ textDecoration: "underline", color: "white" }}>{this.props.scriptingJson[constantValues._LBL_JOIN_MY_REWARDS_PRIVACY_POLICY]}. </a>{this.props.scriptingJson[constantValues._LBL_CALIFORNIA_CUSTOMER_REVIEW]} <a href="https://www.totalwireless.com/privacy-policy#california-privacy-rights" target="_blank" style={{ textDecoration: "underline", color: "white" }}>{this.props.scriptingJson[constantValues._LBL_CALIFORNIA_PRIVACY_NOTICE]}</a>
+                                                    </p>
+                                                    <p style={{ textAlign: "left" }}>{this.props.scriptingJson[constantValues._LBL_OFFERS_EXPERIENCE]}</p>
+                                                    <div className="large primary-btn mt-10 mb-20 text-center">
+
+                                                        <button
+                                                            className={this.props.isInspicioFlow ? "btn" : "btn"}
+                                                            disabled={!isAccountCreateButtonEnabled}
+                                                            id="user-create-account-continue-button"
+                                                            data-gtm-placement="checkout_login"
+                                                            data-gtm-cta="create_account_continue"
+                                                            tabIndex={constantValues.TAB_INDEX_ZERO}
+                                                            aria-label={createAccountFormValidity ? this.props.scriptingJson[constantValues._BTN_CONTINUE] : `${this.props.scriptingJson[constantValues._BTN_CONTINUE]} ${this.props.scriptingJson[constantValues.ARIA_BUTTON_DISABLED]}`}
+                                                            onClick={() => this.handleCreateAccount()}> {this.state.consentTbvCheckbox !== true ? this.props.scriptingJson[constantValues._LBL_CREATE_PROFILE] : this.props.scriptingJson[constantValues._LBL_CREATE_ACCOUNT]}</button>
+                                                    </div>
+                                                </div>
+
+                                            ) : (
+                                                <div className={createAccountFormValidity ? `${buttonClass} primary-btn mt-10 mb-20 text-center` : `${buttonClass} primary-btn disabled mt-10 mb-20 text-center`}>
+
+                                                    <button
+                                                        disabled={this.props.createAccountLoading}
+                                                        id="user-create-account-continue-button"
+                                                        className="btn"
+                                                        data-gtm-placement="checkout_login"
+                                                        data-gtm-cta="create_account_continue"
+                                                        tabIndex={constantValues.TAB_INDEX_ZERO}
+                                                        aria-label={createAccountFormValidity ? this.props.scriptingJson[constantValues._BTN_CONTINUE] : `${this.props.scriptingJson[constantValues._BTN_CONTINUE]} ${this.props.scriptingJson[constantValues.ARIA_BUTTON_DISABLED]}`}
+                                                        onClick={() => this.isEmailCheckRequired() ? this.emailCheckAndRegisterAccountHandler() : this.registerAccountHandler()}
+                                                    >{this.props.scriptingJson ? this.props.scriptingJson[constantValues._BTN_CONTINUE] : constantValues._BTN_CONTINUE}</button>
+                                                </div>
+                                            )}
+
+                                        </div>
+
+                                        {!_.isEmpty(this.props.enableFacebookAuth) && this.props.enableFacebookAuth === 'true' ?
+                                            <React.Fragment>
+                                                <div className="or-seperator mb-20">{this.props.scriptingJson ? this.props.scriptingJson[constantValues._LBL_OR] : constantValues._LBL_OR}</div>
+                                                <div className="extra-large facebook-btn text-center" ref={this.fbButtonRef}>
+                                                    <button onClick={() => this.props.facebookLogin()} className="btn">{this.props.scriptingJson ? this.props.scriptingJson[constantValues._BTN_FACEBOOK_CREATE_ACCOUNT] : constantValues._BTN_FACEBOOK_CREATE_ACCOUNT}</button>
+                                                </div>
+                                            </React.Fragment> : null}
+                                        {/*Show api return status success & error message*/}
+                                        {!_.isEmpty(statusMessage) ? (
+                                            <div className="success-msg w-100">
+                                                <Icon className="success" />
+                                                <span className="caption-two success-text" role="alert">{statusMessage}</span>
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                </>
+                            }
+                        </>
+                    }
+                </div>
+                {this.state.showLearnMoreModal ?
+                    <React.Fragment>
+                        <Backdrop show={this.state.showLearnMoreModal} clicked={() => this.switchModalViewHandler(this.state.modalName)} setModelOpenClass={true} />
+                        <ShowModalContent
+                            modalClosed={() => this.switchModalViewHandler(this.state.modalName)}
+                            scriptingJson={this.props.scriptingJson}
+                            modalContent={this.props.learnMoreLinkModalContent}
+                            modalName={this.state.modalName}
+                            show={this.state.showLearnMoreModal}
+                            style={this.state.showLearnMoreModal ? constantValues.MODAL_STYLE : constantValues.MODAL_STYLE_NONE} />
+                    </React.Fragment> : null}
+                {this.state.showWhatIsThisModal ?
+                    <React.Fragment>
+                        <Backdrop show={this.state.showWhatIsThisModal} clicked={() => this.switchModalViewHandler(this.state.modalName)} setModelOpenClass={true} />
+                        <ShowModalContent
+                            modalClosed={() => this.switchModalViewHandler(this.state.modalName)}
+                            scriptingJson={this.props.scriptingJson}
+                            modalContent={this.props.whyNeedThisLinkModalContent}
+                            modalName={this.state.modalName}
+                            show={this.state.showWhatIsThisModal}
+                            style={this.state.showWhatIsThisModal ? constantValues.MODAL_STYLE : constantValues.MODAL_STYLE_NONE} />
+                    </React.Fragment> : null}
+            </React.Fragment>
+        </div>
+        )
+    }
+}
+
+UserCreateAccount.propTypes = {
+    headlineCreateAccount: PropTypes.string,
+    ageConsent: PropTypes.string,
+    whyNeedThisLinkText: PropTypes.string,
+    whyNeedThisLinkModalContent: PropTypes.string,
+    learnMoreLinkText: PropTypes.string,
+    learnMoreLinkModalContent: PropTypes.string,
+    createAccountErrorMessage: PropTypes.string,
+    createAccountData: PropTypes.object,
+    userAuthentication: PropTypes.object,
+    createAccount: PropTypes.func,
+    recaptchaToken: PropTypes.string,
+    disableCaptcha: PropTypes.string,
+    scriptingJson: PropTypes.object,
+    facebookLogin: PropTypes.func,
+    componentVersion: PropTypes.string,
+    twoFAInfoLink: PropTypes.string,
+    maskedEmail: PropTypes.string
+};
+
+const mapStateToProps = state => {
+    const shippingInfo = checkoutDetailDataUtil.getShippingInfoFormData(state.checkoutDetail.checkoutReview.shippingReviewData);
+
+    return {
+        validRealEmailCheckError: state.authDetail.validRealEmailCheckError,
+        validRealEmailCheckLoading: state.authDetail.validRealEmailCheckLoading,
+        validRealEmailCheck: state.authDetail.validRealEmailCheck,
+        verifyEmailAccountData: state.authDetail.verifyEmailAccountData,
+        showAccountReady: state.authDetail.showAccountReady,
+        validatedFormName: state.checkoutDetail.validatedFormName,
+        validatedFormName: state.checkoutDetail.validatedFormName,
+        validatedAddressVerifyLevel: state.checkoutDetail.validatedAddressVerifyLevel,
+        shippingInfo: state.checkoutDetail[constantValues.FORM_TYPE_SHIPPING_INFO],
+        shippingAddressInfo: state.checkoutDetail[constantValues.FORM_TYPE_SAVED_SHIPPING_ADDRESS],
+    }
+}
+
+const mapDispatchToProps = dispatch => {
+    return {
+        onInitValidRealEmailCheck: (url, payload) =>
+            dispatch(actions.validRealEmailCheck(url, payload)),
+        onInitValidateAddress: (validateShippingAddressUrl, authToken, addressFormName, language) =>
+            dispatch(actions.validateAddress(validateShippingAddressUrl, authToken, addressFormName, language)),
+        onInitFormDetailUpdateInStore: (formDetailsJson, formName, isReviewObject) =>
+            dispatch(actions.initFormDetailUpdateInStore(formDetailsJson, formName, isReviewObject)),
+    }
+}
+
+export default connect(mapStateToProps, mapDispatchToProps)(UserCreateAccount);
