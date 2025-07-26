@@ -336,17 +336,71 @@ class UserCreateAccount extends Component {
     };
 
     isAdditionalInfoProvided = () => {
+        const {
+            birthDate,
+            pronoun,
+            birthDateValid,
+        } = this.state;
         const { phoneNumber } = this.props?.shippingInfo || {};
         const { zipCode: { isValid: zipValid } = { isValid: false } } = this.props?.shippingAddressInfo || {};
-        const isBirthDateValid = this.state.birthDateValid;
-        const phoneLengthInvalid = phoneNumber && phoneNumber.length !== 14;
-        // Logic to decide new value for ctnBtnDisable
-        if (isBirthDateValid && phoneLengthInvalid) {
-            return true;
+        const phoneNumberValid = phoneNumber && phoneNumber.length !== 14;
+        const { shippingAddress = {} } = this.props;
+
+        const birthDateValue = birthDate?.trim();
+        const pronounValue = pronoun?.trim();
+        const addressLine1 = shippingAddress.addressLine1?.trim();
+        const city = shippingAddress.city?.trim();
+        const stateOrProvince = shippingAddress.stateOrProvince?.trim();
+        const country = shippingAddress.country?.trim();
+        const zipCode = shippingAddress.zipCode?.trim();
+        const isPhoneEntered = phoneNumber !== '';
+        const isBirthDateEntered = birthDateValue !== '';
+        const isPronounSelected = pronounValue !== '';
+        const isAddressEntered = addressLine1 !== '';
+        const izZipcodeEntered = zipCode !== '';
+
+        // ✅ Case 1: All fields empty — allow Continue
+        if (
+            !isPhoneEntered &&
+            !isBirthDateEntered &&
+            !isPronounSelected &&
+            !isAddressEntered
+        ) {
+            return true; // ✅ Enable button
         }
-        else {
-            return false;
+
+        // ❌ Case 2: If phone or birthdate is entered but invalid
+        if ((isPhoneEntered && !phoneNumberValid) || (isBirthDateEntered && !birthDateValid) || (izZipcodeEntered && !zipValid)) {
+            return false; // ❌ Disable button
         }
+
+        // ❌ Case 3: If address is entered, city/state/zipcode/country must be valid
+        if (isAddressEntered) {
+            const isCityValid = city && city !== '';
+            const isStateValid = stateOrProvince && stateOrProvince !== '';
+            const isCountryValid = country && country !== '';
+            const isZipValid = zipCode?.trim() !== '' && zipValid;
+
+            if (!isCityValid || !isStateValid || !isCountryValid || !isZipValid) {
+                return false; // ❌ Disable button
+            }
+        }
+
+        // ✅ All validations passed
+        return true;
+
+        // ======================================================================================
+        // const { phoneNumber } = this.props?.shippingInfo || {};
+        // const { zipCode: { isValid: zipValid } = { isValid: false } } = this.props?.shippingAddressInfo || {};
+        // const isBirthDateValid = this.state.birthDateValid;
+        // const phoneLengthInvalid = phoneNumber && phoneNumber.length !== 14;
+        // // Logic to decide new value for ctnBtnDisable
+        // if (isBirthDateValid && phoneLengthInvalid) {
+        //     return true;
+        // }
+        // else {
+        //     return false;
+        // }
     }
 
     static getDerivedStateFromProps(props, state) {
