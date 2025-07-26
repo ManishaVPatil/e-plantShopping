@@ -1,0 +1,1384 @@
+import * as ecommerceConstants from '../../constants/ecommerce-constants';
+import * as loginUtil from '../../utils/login-util';
+import * as apiUtil from '../../utils/api-util';
+import formSubmission from '../../utils/form-util';
+import * as activationUtil from '../../utils/activation-util';
+import * as pathUtil from '../../utils/path-util';
+/**
+ * Register Update Account Component
+ * Contains events for update account in login screens
+ **/
+
+
+class RegisterUpdateActComponent {
+    constructor(config) {
+        this._element = config.element;
+		this._modalBody = document.querySelector('.login-modal-body');
+        this._createAccountFields = false;
+        this._attachCreateAccountSubmitListener();
+        this._attachCreateAccountAdditionalSubmitListener();
+        this._attachFacebookSubmitListener();
+        if (window.isActivationWebviewEnabled()) {
+            this._attachviewWebviewPwdListener();
+        } else {
+            this._attachPhoneValidationListener();
+            this._attachAdditionalAddressListener();
+            this._attachMonthYearValidationListener();
+            this._attachListeners(); /*Address changes */
+            this.populatePronounDropDown(); /*Address changes */
+            this.populateStateDropDown();
+            this._attachAdditionalDetailsValidationListener();
+            this.attachApartmentValidationButtonListener();
+            this.attachUseSuggestedAddressButtonListener();
+            this.attachSaveAddressFromApiListener();
+            this._attachAddressValidationListener();
+            this._attachAddress2ValidationListener();
+            this._attachAdditionalDetailsSkipListener();
+        }
+        
+        
+		this._state = {
+            myAccountUrl: this._modalBody && this._modalBody.dataset.myaccounteventpath? this._modalBody.dataset.myaccounteventpath : this._element.getAttribute("data-myaccount-path"),
+            eventDetailObj: this._modalBody && this._modalBody.dataset.eventdetail ? JSON.parse(this._modalBody.dataset.eventdetail) : {},
+            isActivationFlow: (document.querySelector(ecommerceConstants.LBL_SECTION_CONTAINER_CLASS).dataset.enableaccountcapacitycheck == ecommerceConstants.trueFlag && document.querySelector('.activation-flow-wrapper')) ? true : false,
+            isPurchaseFlow: (document.querySelector('.purchase-flow-wrapper') ? true : false)
+        }
+        this._removeLinkTargetForActivation();
+        const enableAccountCreationValidation = document.querySelector('.section-api-container').dataset.enableaccountcreationvalidation;
+        if(enableAccountCreationValidation==="true"){
+            this._popuateDummyRealEmails();
+            this._attachRealEmailCheckValidation();
+        }
+        this.fbUserDetails = {};
+        this.currentFlowType = apiUtil.getCookie(ecommerceConstants.currentFlowType);
+        this._checkAdditionalCreateAccountValues();
+        this.addressValues = {};
+        let activationContainer = document.querySelector('#activation-flow-wrapper-id');
+        if (activationContainer) {
+            this.addressValidationModalId = activationContainer.dataset.addressvalidationmodalid;
+        }
+        this.scriptingFieldMappingObj = JSON.parse(JSON.stringify(ecommerceConstants.SCRIPTING_KEY_ADDRESS_FIELD_MAPPING_OBJECT));
+        this.enableLrpEnrollment();
+    }
+
+    async _attachviewWebviewPwdListener() {
+        if (window.isActivationWebviewEnabled()) {
+            document.querySelector("#tab1")?.removeAttribute("tabindex");
+            document.querySelector("#tab2")?.removeAttribute("tabindex");
+            document.querySelector(".forgot-password")?.setAttribute("role", "link");
+            const loginTitle = document.querySelector(".activation-flow-step-title");
+            if (loginTitle) {
+                loginTitle.setAttribute("tabindex", "0");
+            }
+            const toolTipEl = document.querySelector(".tooltipicon");
+            const emailId = document.querySelector("#registerEmailAddress");            
+            if (toolTipEl) {
+                toolTipEl.style.setProperty("margin-right", "-32px", "important");
+                toolTipEl.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") {
+                        document.querySelector(".webview-auth-tooltip").focus();     
+                    }
+                });
+            };
+            if (emailId) {
+                emailId.classList.add("success");
+                let hintTxt = await apiUtil.getScriptingValue(ecommerceConstants.WEBVIEW_LBL_HINT_TEXT_EMAIL);
+                console.log(hintTxt, "hintTxt");
+                document.querySelector(".reg-email").innerHTML = hintTxt;
+            };
+            let timing8;
+            if (timing8) window.clearTimeout(timing8);
+            timing8 = setTimeout(() => {
+                const viewLink = document.querySelectorAll(".view-link")[0];
+                if (viewLink) {
+                    viewLink.style.setProperty("margin-top", "6px", "important");
+                }
+            });
+            
+            // accessibillity
+            setTimeout(() => {
+                document.querySelector("#myTab")?.setAttribute("role", "presentation");
+                const formEl = document.querySelector(".register-update-form");
+                const profileTab = document.querySelector("#profile-tab");
+                const loginTab = document.querySelector("#login-tab"); 
+
+                profileTab?.setAttribute("aria-label", formEl?.getAttribute("data-create-account-tab-not"));
+                profileTab?.removeAttribute("aria-selected");
+                loginTab?.setAttribute("aria-label", formEl?.getAttribute("data-login-tab"));
+                loginTab?.removeAttribute("aria-selected");
+
+                const linkWrap = document.querySelector("#create-account-privacy-link");
+                const ariaText = linkWrap?.getAttribute("data-aria-label-link");
+                const textArr = linkWrap?.innerText.split(".");
+                const linkArr = linkWrap?.querySelectorAll("a");
+
+                linkArr[0]?.setAttribute("aria-label", textArr[0] + ", " + ariaText);
+                linkArr[1]?.setAttribute("aria-label", textArr[1] + ", " + ariaText);
+                linkArr[2]?.setAttribute("aria-label", textArr[2] + ", " + ariaText);
+
+            }, 50);
+        }
+    }
+
+    _attachCreateAccountAdditionalSubmitListener() {
+        formSubmission(
+            this._element.querySelector('.register-update-form-additional'),
+            this._element.querySelector('.createAccountBtnAdditional'),
+            async () => {
+                this._registerAccount(false,true);
+            }
+        );
+    }
+
+    _attachAdditionalDetailsSkipListener() {
+        document.addEventListener('AdditionalDetailsSkipListener', (event) => {
+            this._registerAccount(false,false,false,true);
+        });
+    }
+
+   
+
+     /**
+     * This method is used for phone no validation
+     */
+     _attachPhoneValidationListener() {
+        document.addEventListener('validatePhone', (event) => {
+           	this.validateWithRegex(event.detail.element, ecommerceConstants.PHONE_NO_REGEX, event.detail.element.value, event.detail.hideError,"_TF_ERR_INVALID_PHONE_NUMBER");
+            this._checkCreateAccount();
+        });
+    }
+    _attachAdditionalDetailsValidationListener() {
+        document.addEventListener('validateAdditionalDetails', (event) => {
+            this._checkCreateAccount(event);
+        });
+    }
+    _attachAdditionalAddressListener() {
+        document.addEventListener('AddressValidationButtonClickAdditional', (event) => {
+            let activationContainer = document.querySelector('#activation-flow-wrapper-id');
+            if (activationContainer) {
+                document.dispatchEvent(new CustomEvent("CloseCustomModal", {
+                    "detail": {
+                        "modalid": activationContainer.dataset.addressvalidationmodalid
+                    }
+                }));          
+            }
+            
+            this._registerAccount(false,true,true);
+        });
+    }
+    _checkCreateAccount(event){
+        const createAccountValidation=document.querySelectorAll('.register-update-form-additional .form-control[data-checkvalidation=true]');
+        const objectValue = event?.detail?.element?.value;
+        let checkAddress=false;
+        for(var i=0;i<createAccountValidation.length;i++){
+            if(createAccountValidation[i]?.classList?.contains('error')){
+                document.querySelector('#createAccountBtnAdditional')?.classList.add('disabled');
+                checkAddress=true;
+                break;
+            }
+        }
+            const address1 = document.querySelector('#service-address1')?.value;
+            let zipCode = document.querySelector('#service-address-zip')?.value;
+            const city = document.querySelector('#service-address-city')?.value;
+            const state = document.querySelector('#service-state')?.dataset.value;
+            zipCode = zipCode ? zipCode.length===5 ? zipCode : "": zipCode;
+            if((address1||zipCode||city||state) && (!address1||!zipCode||!city||!state)){
+                document.querySelector('#createAccountBtnAdditional')?.classList.add('disabled');
+                if(objectValue){
+                    event?.detail?.element?.classList.add('success');
+                    event?.detail?.element?.classList.remove('error');
+                    event?.detail?.element?.parentElement?.nextElementSibling?.classList.add('invisible');
+                    const ele = event?.detail?.element?.parentElement?.nextElementSibling;
+                    if(ele)
+                        ele.innerHTML = '';
+                    this._removeAccessibilityText(event?.detail?.element?.parentElement?.nextElementSibling?.id);
+                }else{
+                    event?.detail?.element?.classList.remove('success');
+                    event?.detail?.element?.classList.add('error');
+                    let scriptingKey = this.scriptingFieldMappingObj[event?.detail?.element?.id];
+                    this._setErrorClasses(event?.detail?.element, scriptingKey);
+                }
+            }else{
+                if(objectValue){
+                    event?.detail?.element?.classList.add('success');
+                    event?.detail?.element?.classList.remove('error');
+                    event?.detail?.element?.parentElement?.nextElementSibling?.classList.add('invisible');
+                    const ele = event?.detail?.element?.parentElement?.nextElementSibling;
+                    if(ele)
+                        ele.innerHTML = '';
+                    this._removeAccessibilityText(event?.detail?.element?.parentElement?.nextElementSibling?.id);
+                }else{
+                    event?.detail?.element?.classList.remove('success');
+                    event?.detail?.element?.classList.remove('error');
+                    event?.detail?.element?.parentElement?.nextElementSibling?.classList.add('invisible');
+                    const ele = event?.detail?.element?.parentElement?.nextElementSibling;
+                    if(ele)
+                        ele.innerHTML = '';
+                    this._removeAccessibilityText(event?.detail?.element?.parentElement?.nextElementSibling?.id);
+                }
+                const createAccountValidationAddress=document.querySelectorAll('.register-update-form-additional .form-control[data-checkvalidationAddress=true]');
+                for(var i=0;i<createAccountValidationAddress.length;i++){
+                    createAccountValidationAddress[i]?.classList?.remove('error');
+                    createAccountValidationAddress[i]?.parentElement?.nextElementSibling?.classList.add('invisible');
+                    const ele = createAccountValidationAddress[i]?.parentElement?.nextElementSibling;
+                    if(ele)
+                        ele.innerHTML = '';
+                }
+                document.querySelector('#createAccountBtnAdditional')?.classList.remove('disabled');
+                if(checkAddress){
+                    document.querySelector('#createAccountBtnAdditional')?.classList.add('disabled');
+                }
+            } 
+    }
+
+    enableLrpEnrollment(){
+        /*Enable the enrolled-in-rewards by default*/
+        let brandsName = document.querySelector('.section-api-container')?.dataset.brand;
+       // if(brandsName && brandsName === ecommerceConstants.TBV_BRAND_NAME){
+        if(document.querySelector("#enrolled-in-rewards")){
+            if(!document.querySelector("#enrolled-in-rewards")?.checked){
+                document.querySelector("#enrolled-in-rewards")?.click();}
+        }
+            document.querySelector("#profile-tab")?.addEventListener("click", function () {
+                    if(!document.querySelector("#enrolled-in-rewards")?.checked){
+                        document.querySelector("#enrolled-in-rewards")?.click();
+                    }
+                });
+
+                if(activationUtil){
+                    let twRewardsValue,twUpgradeRewardsValue;
+                    if (activationUtil?.getValueFromActivationCookie(ecommerceConstants.TW_UPGRADE_REWARDS_LABEL)) {
+                        twUpgradeRewardsValue = activationUtil.getValueFromActivationCookie(ecommerceConstants.TW_UPGRADE_REWARDS_LABEL);
+                    }
+                    if(twUpgradeRewardsValue && twUpgradeRewardsValue === ecommerceConstants.TW_TRUE_FLAG){
+                        document.querySelector('#enrolled-in-rewards-container')?.classList.replace('d-flex','d-none');
+                        return;
+                     }
+                    if (activationUtil?.getValueFromActivationCookie(ecommerceConstants.TW_REWARDS_LABEL)) {
+                        twRewardsValue = activationUtil.getValueFromActivationCookie(ecommerceConstants.TW_REWARDS_LABEL);
+                    }
+                    if(twRewardsValue && twRewardsValue === ecommerceConstants.TW_TRUE_FLAG){
+                            document.querySelector('#enrolled-in-rewards-container')?.classList.replace('d-flex','d-none');
+                    }
+                }
+       // }
+   }
+    /**
+     * This method is used to validate input value against a regex
+     * @param {*STRING|Object} {
+     *  @element : This is the current element whose value needs to be tested
+     *  @regex : this is the regex expression
+     *  @val : This is the input value
+     * }
+     */
+    async validateWithRegex(element, regexPattern, val, hideError,scriptingKey) {
+        if(!val){
+            element?.parentElement?.nextElementSibling?.classList.add('invisible');
+            this._removeAccessibilityText(element?.parentElement?.nextElementSibling?.id);
+            element.classList.remove('error');
+            element.classList.remove('success');
+            return true;
+        }else{  
+            if (val && (regexPattern.test(val)==true||regexPattern.test(val)=="true")) {
+                    element?.parentElement?.nextElementSibling?.classList.add('invisible');
+                    this._removeAccessibilityText(element?.parentElement?.nextElementSibling?.id);
+                    element.classList.remove('error');
+                    element.classList.add('success');
+                    return true;
+        } else if(!hideError){
+			this._setErrorClasses(element,scriptingKey);
+            return false;
+        }
+    }
+    }
+    /**
+     * This method is used to remove the accessibility text from an element
+     * @param {STRING} {
+     *  @id : Id of the target element
+     * }
+     */
+    _removeAccessibilityText(id) {
+        if(id && document.querySelector(`.${id}2`))
+            document.querySelector(`.${id}2`).innerText = "";
+    }
+    /**
+     * This method is used to set error classes
+	 *@param {@element: element item
+	 *        @scriptingKey: Scripting key 
+        *       }
+        */
+       async _setErrorClasses(element,scriptingKey){		
+                   element.parentElement.nextElementSibling.classList.remove('invisible');
+                   element.classList.remove('success');
+                   element.classList.add('error');				
+                   if(scriptingKey){
+                       let errorMsg  = await apiUtil.getScriptingValue(scriptingKey);
+                       if(errorMsg)
+                           element.parentElement.nextElementSibling.innerHTML= '<span class="icon dark-theme large-icon"><i class="error-total-red"></i></span>'+errorMsg;
+                       if(document.querySelector(`.${element.parentElement.nextElementSibling.id}2`))
+                           document.querySelector(`.${element.parentElement.nextElementSibling.id}2`).innerText = errorMsg;
+                   }
+       }
+    /**
+     * This method is used for phone no validation
+     */
+    _attachMonthYearValidationListener() {
+        document.addEventListener('validateMonthYear', (event) => {  
+            this._validateMonthDate(event.detail.element,event.detail.element.value,event.detail.hideError,"_TF_ERR_INVALID_BIRTHDATE");
+            this._checkCreateAccount();
+        });
+    }
+    _validateMonthDate(element,val,hideError,scriptingKey){
+        if(val){
+            const regex = new RegExp("/","g");
+            const matches = val.match(regex); 
+            if(matches?.length===1){
+            val = val.split('/');
+            if(/^(1[012]|0[123456789])$/.test(val[0])){
+                if(/^(0[123456789]|1[0123456789]|2[0123456789]|3[01])$/.test(val[1])){
+                    const monthDays = new Date(1752, val[0], 0).getDate();
+                    if(monthDays && monthDays>=val[1]){
+                        element.parentElement?.nextElementSibling?.classList.add('invisible');
+                        this._removeAccessibilityText(element.parentElement?.nextElementSibling?.id);
+                        element.classList.remove('error');
+                        element.classList.add('success');
+                        return true;
+                    }else{
+                        this._setErrorClasses(element,scriptingKey);
+                        return false;
+                    }
+                }else{
+                    if(!hideError){
+                        this._setErrorClasses(element,scriptingKey);
+                        return false;
+                    }
+                }
+            }else{            
+                if(!hideError){
+                    this._setErrorClasses(element,scriptingKey);
+                    return false;
+                }
+            }
+        }
+        else{            
+            if(!hideError){
+                this._setErrorClasses(element,scriptingKey);
+                return false;
+            }
+        }
+        }else{
+            element.parentElement?.nextElementSibling?.classList.add('invisible');
+            this._removeAccessibilityText(element.parentElement?.nextElementSibling?.id);
+            element.classList.remove('error');
+            element.classList.remove('success');
+            return true;
+        }
+    }
+    /**
+         * This method is used to populate the values in state dropdown
+         */
+        populatePronounDropDown() {
+            if (document.querySelector('.registerUpdateActContainer').dataset.pronounmapping !== null &&
+                document.querySelector('.registerUpdateActContainer').dataset.pronounmapping !== undefined &&
+                document.querySelector('.registerUpdateActContainer').dataset.pronounmapping !== null) {
+                let pronounList = JSON.parse(document.querySelector('.registerUpdateActContainer').dataset.pronounmapping);
+                let pronoun = JSON.parse(pronounList.pronoun);
+    
+                let dropDownItem = '';
+                pronoun.forEach((pronoun) => {
+                    dropDownItem = '<li role="option" onkeypress="keyPressDropdown(this);" class="option" val="' + pronoun.value + '" tabindex="0" ' +
+                        'data-gtm-cta="' + pronoun.displayValue + '" aria-label="' + pronoun.displayValue+ '" data-value="' + pronoun.displayValue + '">' + pronoun.displayValue + '</li>';
+                    document.querySelector('#pronoun').insertAdjacentHTML('beforeend', dropDownItem);
+                });
+                   pathUtil.setCustomDropDown("#service-pronoun");
+                   this._attachPronounDownChange();
+                
+            }
+        }   
+
+        /**
+             * This method is used to populate the values in state dropdown
+             */
+        populateStateDropDown() {
+            if (document.querySelector('.registerUpdateActContainer').dataset.countrystatemap !== null &&
+                document.querySelector('.registerUpdateActContainer').dataset.countrystatemap !== undefined &&
+                document.querySelector('.registerUpdateActContainer').dataset.countrystatemap !== null) {
+                let stateList = JSON.parse(document.querySelector('.registerUpdateActContainer').dataset.countrystatemap);
+                let usState = JSON.parse(stateList.US);
+    
+                let dropDownItem = '';
+                usState.forEach((state) => {
+                    dropDownItem = '<li role="option" onkeypress="keyPressDropdown(this);" class="option" val="' + state.value + '" tabindex="0" ' +
+                        'data-gtm-cta="' + state.displayValue + '" aria-label="' + state.displayValue+ '" data-value="' + state.displayValue + '">' + state.displayValue + '</li>';
+                    document.querySelector('#State').insertAdjacentHTML('beforeend', dropDownItem);
+                });
+                   pathUtil.setCustomDropDown('#service-state');
+                   this._attachStateDropDownChange();
+                
+            }
+        }  
+        _attachStateDropDownChange() {    
+            let stateDD = this._element.querySelectorAll('#State .option');
+            if (!stateDD) {
+                return;
+            } else {
+                for (let index = 0; index < stateDD.length; index++) {	
+                    stateDD[index].addEventListener('click', (event) => {
+                       let state = event.target;
+                       let stateDropdown = document.querySelector('#service-state');
+                       stateDropdown.setAttribute('data-value', state.getAttribute('val'));
+                       this._checkCreateAccount();
+                    });
+                    stateDD[index].addEventListener('keydown', (event) => {
+                        if (event.keyCode === 13 ||  event.key === 'Enter') {
+                            let state = event.target;
+                            let stateDropdown = document.querySelector('#service-state');
+                            stateDropdown.setAttribute('data-value', state.getAttribute('val'));
+                            this._checkCreateAccount();
+                        }else if(event.keyCode === 27 ||  event.key === 'Escape' || event.key === 'Tab' || event.keyCode === 9){
+                           window.handleEscapeInDropDown(event);
+                        }
+                    });
+                }
+            }
+        }
+
+        _attachPronounDownChange() {    
+            let pronounDD = this._element.querySelectorAll("#pronoun" + ' .option');
+            if (!pronounDD) {
+                return;
+            } else {
+                for (let index = 0; index < pronounDD.length; index++) {	
+                    pronounDD[index].addEventListener('click', (event) => {
+                       let pronoun = event.target;
+                       let pronounDropdown = document.querySelector('#service-pronoun');
+                       pronounDropdown.setAttribute('data-value', pronoun.getAttribute('val'))
+                    });
+                    pronounDD[index].addEventListener('keydown', (event) => {
+                        if (event.keyCode === 13 ||  event.key === 'Enter') {
+                            let pronoun = event.target;
+                            let pronounDropdown = document.querySelector('#service-pronoun');
+                            pronounDropdown.setAttribute('data-value', pronoun.getAttribute('val'))
+                        }else if(event.keyCode === 27 ||  event.key === 'Escape' || event.key === 'Tab' || event.keyCode === 9){
+                           window.handleEscapeInDropDown(event);
+                        }
+                    });
+                }
+            }
+        }
+        _checkAdditionalCreateAccountValues(){
+            let brandName = document.querySelector('.section-api-container')?.dataset.brand;
+            const executionPlanAction = localStorage.getItem(ecommerceConstants.actionLSLabel);
+            localStorage.removeItem("showAdditionalDetails");
+            if(executionPlanAction && 
+                ((activationUtil.getActivationCookie()?.flow===ecommerceConstants.flow_newact && executionPlanAction===ecommerceConstants.ACTIVATION) || 
+                (activationUtil.getActivationCookie()?.flow===ecommerceConstants.LBL_FLOWTYPE_EXTERNAL && executionPlanAction===ecommerceConstants.EXTERNAL_PORT) || 
+                (activationUtil.getActivationCookie()?.flow===ecommerceConstants.LBL_FLOWTYPE_INTERNAL && executionPlanAction===ecommerceConstants.INTERNAL_PORT)) && 
+                this.currentFlowType === ecommerceConstants.activationFlowType){
+                    document.querySelector('.user-account-firstname')?.classList.remove('d-none');
+                    document.querySelector('.user-account-lastname')?.classList.remove('d-none');
+                    document.querySelector('.confirm-password-add')?.classList.remove('d-none');
+                    document.querySelector('.confirm-password-alt')?.remove();
+                    document.querySelector('.user-account-email-address')?.classList.remove('mt-30');
+                    this._createAccountFields = true;
+                    localStorage.setItem("showAdditionalDetails","true");
+            }
+        }
+
+    /**
+     * Attach create account submission
+     */
+    _attachCreateAccountSubmitListener() {
+        formSubmission(
+            this._element.querySelector('.register-update-form'),
+            this._element.querySelector('.createAccountBtn'),
+
+            async () => {
+                this._registerAccount(this._createAccountFields);
+            }
+        );
+    }
+    
+    _attachAddressValidationListener() {
+        const addressInput = document.querySelector('#service-address1');
+        if (addressInput) {
+            addressInput.addEventListener('blur', (event) => {
+                const value = event.target.value;
+                this.validateWithRegex(
+                    event.target,
+                    ecommerceConstants.ADDRESS_REGEX,
+                    value,
+                    false,
+                    ecommerceConstants.ERR_NUMERIC_ADDRESS_LIMIT,
+                );
+                this._checkCreateAccount();
+            });
+        }
+    }
+
+    _attachAddress2ValidationListener() {
+        const addressInput = document.querySelector('#service-address2');
+        if (addressInput) {
+            addressInput.addEventListener('blur', (event) => {
+                const value = event.target.value;
+                this.validateWithRegex(
+                    event.target,
+                    ecommerceConstants.ADDRESS_REGEX,
+                    value,
+                    false,
+                    ecommerceConstants.ERR_NUMERIC_ADDRESS_LIMIT,  
+                );
+                this._checkCreateAccount();
+            });
+        }
+    }
+
+
+    _attachCreateAccountAdditionalSubmitListener() {
+        formSubmission(
+            this._element.querySelector('.register-update-form-additional'),
+            this._element.querySelector('.createAccountBtnAdditional'),
+
+            async () => {
+                this._registerAccount(false,true);
+            }
+        );
+    }
+    
+    /** Address changes
+     * Function to attach listeners
+     **/
+    _attachListeners() {
+        this.attachAutoPopulateCityStateListener();
+     }
+
+    /**
+     * This method is used for phone no validation
+     */
+    _attachPhoneValidationListener() {
+        document.addEventListener('validatePhone', (event) => {
+           	this.validateWithRegex(event.detail.element, ecommerceConstants.PHONE_NO_REGEX, event.detail.element.value, event.detail.hideError,"_TF_ERR_INVALID_PHONE_NUMBER");
+            this._checkCreateAccount();
+        });
+    }
+
+    _attachAdditionalDetailsValidationListener() {
+        document.addEventListener('validateAdditionalDetails', (event) => {
+            this._checkCreateAccount(event);
+        });
+    }
+
+    _attachAdditionalAddressListener() {
+        document.addEventListener('AddressValidationButtonClickAdditional', (event) => {
+            let activationContainer = document.querySelector('#activation-flow-wrapper-id');
+            if (activationContainer) {
+                document.dispatchEvent(new CustomEvent("CloseCustomModal", {
+                    "detail": {
+                        "modalid": activationContainer.dataset.addressvalidationmodalid
+                    }
+                }));          
+            }
+            
+            this._registerAccount(false,true,true);
+        });
+    }
+    _checkCreateAccount(event){
+        const createAccountValidation=document.querySelectorAll('.register-update-form-additional .form-control[data-checkvalidation=true]');
+        const objectValue = event?.detail?.element?.value;
+        let checkAddress=false;
+        for(var i=0;i<createAccountValidation.length;i++){
+            if(createAccountValidation[i]?.classList?.contains('error')){
+                document.querySelector('#createAccountBtnAdditional')?.classList.add('disabled');
+                checkAddress=true;
+                break;
+            }
+        }
+            const address1 = document.querySelector('#service-address1')?.value;
+            let zipCode = document.querySelector('#service-address-zip')?.value;
+            const city = document.querySelector('#service-address-city')?.value;
+            const state = document.querySelector('#service-state')?.dataset.value;
+            zipCode = zipCode ? zipCode.length===5 ? zipCode : "": zipCode;
+            if((address1||zipCode||city||state) && (!address1||!zipCode||!city||!state)){
+                document.querySelector('#createAccountBtnAdditional')?.classList.add('disabled');
+                if(objectValue){
+                    event?.detail?.element?.classList.add('success');
+                    event?.detail?.element?.classList.remove('error');
+                    event?.detail?.element?.parentElement?.nextElementSibling?.classList.add('invisible');
+                    const ele = event?.detail?.element?.parentElement?.nextElementSibling;
+                    if(ele)
+                        ele.innerHTML = '';
+                    this._removeAccessibilityText(event?.detail?.element?.parentElement?.nextElementSibling?.id);
+                }else{
+                    event?.detail?.element?.classList.remove('success');
+                    event?.detail?.element?.classList.add('error');
+                    let scriptingKey = this.scriptingFieldMappingObj[event?.detail?.element?.id];
+                    this._setErrorClasses(event?.detail?.element, scriptingKey);
+                }
+            }else{
+                if(objectValue){
+                    event?.detail?.element?.classList.add('success');
+                    event?.detail?.element?.classList.remove('error');
+                    event?.detail?.element?.parentElement?.nextElementSibling?.classList.add('invisible');
+                    const ele = event?.detail?.element?.parentElement?.nextElementSibling;
+                    if(ele)
+                        ele.innerHTML = '';
+                    this._removeAccessibilityText(event?.detail?.element?.parentElement?.nextElementSibling?.id);
+                }else{
+                    event?.detail?.element?.classList.remove('success');
+                    event?.detail?.element?.classList.remove('error');
+                    event?.detail?.element?.parentElement?.nextElementSibling?.classList.add('invisible');
+                    const ele = event?.detail?.element?.parentElement?.nextElementSibling;
+                    if(ele)
+                        ele.innerHTML = '';
+                    this._removeAccessibilityText(event?.detail?.element?.parentElement?.nextElementSibling?.id);
+                }
+                const createAccountValidationAddress=document.querySelectorAll('.register-update-form-additional .form-control[data-checkvalidationAddress=true]');
+                for(var i=0;i<createAccountValidationAddress.length;i++){
+                    //createAccountValidationAddress[i]?.classList?.remove('success');
+                    createAccountValidationAddress[i]?.classList?.remove('error');
+                    createAccountValidationAddress[i]?.parentElement?.nextElementSibling?.classList.add('invisible');
+                    const ele = createAccountValidationAddress[i]?.parentElement?.nextElementSibling;
+                    if(ele)
+                        ele.innerHTML = '';
+                }
+                document.querySelector('#createAccountBtnAdditional')?.classList.remove('disabled');
+                if(checkAddress){
+                    document.querySelector('#createAccountBtnAdditional')?.classList.add('disabled');
+                }
+            } 
+    }
+    _attachAdditionalAddressSubmitListener(){
+        document.querySelector('#address-validation-modal')?.querySelector('.ADDRESS_VERIFICATION_PREMISES_PARTIAL a')?.setAttribute('data-eventname','ApartmentValidationButtonClickRegister');
+        document.querySelector('#address-validation-modal')?.querySelector('.ADDRESS_VERIFICATION_INTERACTION_REQUIRED a')?.setAttribute('data-eventname','UseSuggestedAddressButtonClickRegister');
+    }
+
+    enableLrpEnrollment(){
+         /*Enable the enrolled-in-rewards by default*/
+         if(document.querySelector("#enrolled-in-rewards")){
+            const rewardsCheckbox = document.querySelector("#enrolled-in-rewards");
+                if (rewardsCheckbox) {
+                    rewardsCheckbox.checked = true;
+                }
+         }
+    }
+    
+    /**
+     * This method is used to validate input value against a regex
+     * @param {*STRING|Object} {
+     *  @element : This is the current element whose value needs to be tested
+     *  @regex : this is the regex expression
+     *  @val : This is the input value
+     * }
+     */
+    async validateWithRegex(element, regexPattern, val, hideError,scriptingKey) {
+        if(!val){
+            element.parentElement?.nextElementSibling?.classList.add('invisible');
+            this._removeAccessibilityText(element.parentElement?.nextElementSibling?.id);
+            element.classList.remove('error');
+            element.classList.remove('success');
+            return true;
+        }else{  
+        if (val && (regexPattern.test(val)==true||regexPattern.test(val)=="true")) {
+                element.parentElement?.nextElementSibling?.classList.add('invisible');
+                this._removeAccessibilityText(element.parentElement?.nextElementSibling?.id);
+                element.classList.remove('error');
+                element.classList.add('success');
+                return true;
+        } else if(!hideError){
+			this._setErrorClasses(element,scriptingKey);
+            return false;
+        }
+    
+    }
+    }
+    /**
+     * This method is used to remove the accessibility text from an element
+     * @param {STRING} {
+     *  @id : Id of the target element
+     * }
+     */
+    _removeAccessibilityText(id) {
+        if(id && document.querySelector(`.${id}2`))
+            document.querySelector(`.${id}2`).innerText = "";
+    }
+
+    /**
+     * This method is used to set error classes
+	 *@param {@element: element item
+	 *        @scriptingKey: Scripting key 
+        *       }
+        */
+       async _setErrorClasses(element,scriptingKey){		
+                   element.parentElement.nextElementSibling.classList.remove('invisible');
+                   element.classList.remove('success');
+                   element.classList.add('error');				
+                   if(scriptingKey){
+                       let errorMsg  = await apiUtil.getScriptingValue(scriptingKey);
+                       if(errorMsg)
+                           element.parentElement.nextElementSibling.innerHTML= '<span class="icon dark-theme large-icon"><i class="error-total-red"></i></span>'+errorMsg;
+                       if(document.querySelector(`.${element.parentElement.nextElementSibling.id}2`))
+                           document.querySelector(`.${element.parentElement.nextElementSibling.id}2`).innerText = errorMsg;
+                   }
+       }
+
+    /**
+     * This method is used for phone no validation
+     */
+    _attachMonthYearValidationListener() {
+        document.addEventListener('validateMonthYear', (event) => {  
+            this._validateMonthDate(event.detail.element,event.detail.element.value,event.detail.hideError,"_TF_ERR_INVALID_BIRTHDATE");
+            this._checkCreateAccount();
+        });
+    }
+    _validateMonthDate(element,val,hideError,scriptingKey){
+        if(val){
+            const regex = new RegExp("/","g");
+            const matches = val.match(regex); 
+            if(matches?.length===1){
+            val = val.split('/');
+            if(/^(1[012]|0[123456789])$/.test(val[0])){
+                if(/^(0[123456789]|1[0123456789]|2[0123456789]|3[01])$/.test(val[1])){
+                    const monthDays = new Date(1752, val[0], 0).getDate();
+                    if(monthDays && monthDays>=val[1]){
+                        element.parentElement?.nextElementSibling?.classList.add('invisible');
+                        this._removeAccessibilityText(element.parentElement?.nextElementSibling?.id);
+                        element.classList.remove('error');
+                        element.classList.add('success');
+                        return true;
+                    }else{
+                        this._setErrorClasses(element,scriptingKey);
+                        return false;
+                    }
+                    
+                }else{
+                    if(!hideError){
+                        this._setErrorClasses(element,scriptingKey);
+                        return false;
+                    }
+                }
+            }else{            
+                if(!hideError){
+                    this._setErrorClasses(element,scriptingKey);
+                    return false;
+                }
+            }
+        }
+        else{            
+            if(!hideError){
+                this._setErrorClasses(element,scriptingKey);
+                return false;
+            }
+        }
+        }else{
+            element.parentElement?.nextElementSibling?.classList.add('invisible');
+            this._removeAccessibilityText(element.parentElement?.nextElementSibling?.id);
+            element.classList.remove('error');
+            element.classList.remove('success');
+            return true;
+        }
+    }
+
+    /**
+         * This method is used to populate the values in state dropdown
+         */
+        populatePronounDropDown() {
+            if (document.querySelector('.registerUpdateActContainer').dataset.pronounmapping !== null &&
+                document.querySelector('.registerUpdateActContainer').dataset.pronounmapping !== undefined &&
+                document.querySelector('.registerUpdateActContainer').dataset.pronounmapping !== null) {
+                let pronounList = JSON.parse(document.querySelector('.registerUpdateActContainer').dataset.pronounmapping);
+                let pronoun = JSON.parse(pronounList.pronoun);
+    
+                let dropDownItem = '';
+                pronoun.forEach((pronoun) => {
+                    dropDownItem = '<li role="option" onkeypress="keyPressDropdown(this);" class="option" val="' + pronoun.value + '" tabindex="0" ' +
+                        'data-gtm-cta="' + pronoun.displayValue + '" aria-label="' + pronoun.displayValue+ '" data-value="' + pronoun.displayValue + '">' + pronoun.displayValue + '</li>';
+                    document.querySelector('#pronoun').insertAdjacentHTML('beforeend', dropDownItem);
+                });
+                   pathUtil.setCustomDropDown("#service-pronoun");
+                   this._attachPronounDownChange();
+                
+            }
+        }   
+
+         /**
+             * This method is used to populate the values in state dropdown
+             */
+            populateStateDropDown() {
+                if (document.querySelector('.registerUpdateActContainer').dataset.countrystatemap !== null &&
+                    document.querySelector('.registerUpdateActContainer').dataset.countrystatemap !== undefined &&
+                    document.querySelector('.registerUpdateActContainer').dataset.countrystatemap !== null) {
+                    let stateList = JSON.parse(document.querySelector('.registerUpdateActContainer').dataset.countrystatemap);
+                    let usState = JSON.parse(stateList.US);
+        
+                    let dropDownItem = '';
+                    usState.forEach((state) => {
+                        dropDownItem = '<li role="option" onkeypress="keyPressDropdown(this);" class="option" val="' + state.value + '" tabindex="0" ' +
+                            'data-gtm-cta="' + state.displayValue + '" aria-label="' + state.displayValue+ '" data-value="' + state.displayValue + '">' + state.displayValue + '</li>';
+                        document.querySelector('#State').insertAdjacentHTML('beforeend', dropDownItem);
+                    });
+                       pathUtil.setCustomDropDown('#service-state');
+                       this._attachStateDropDownChange();
+                    
+                }
+            }  
+            _attachStateDropDownChange() {    
+                let stateDD = this._element.querySelectorAll('#State .option');
+                if (!stateDD) {
+                    return;
+                } else {
+                    for (let index = 0; index < stateDD.length; index++) {	
+                        stateDD[index].addEventListener('click', (event) => {
+                           let state = event.target;
+                           let stateDropdown = document.querySelector('#service-state');
+                           stateDropdown.setAttribute('data-value', state.getAttribute('val'))
+                           this._checkCreateAccount();
+                        });
+                        stateDD[index].addEventListener('keydown', (event) => {
+                            if (event.keyCode === 13 ||  event.key === 'Enter') {
+                                let state = event.target;
+                                let stateDropdown = document.querySelector('#service-state');
+                                stateDropdown.setAttribute('data-value', state.getAttribute('val'))
+                                this._checkCreateAccount();
+                            }else if(event.keyCode === 27 ||  event.key === 'Escape' || event.key === 'Tab' || event.keyCode === 9){
+                               window.handleEscapeInDropDown(event);
+                            }
+                        });
+                    }
+                }
+            }
+
+        _attachPronounDownChange() {    
+            let pronounDD = this._element.querySelectorAll("#pronoun" + ' .option');
+            if (!pronounDD) {
+                return;
+            } else {
+                for (let index = 0; index < pronounDD.length; index++) {	
+                    pronounDD[index].addEventListener('click', (event) => {
+                       let pronoun = event.target;
+                       let pronounDropdown = document.querySelector('#service-pronoun');
+                       pronounDropdown.setAttribute('data-value', pronoun.getAttribute('val'))
+                    });
+                    pronounDD[index].addEventListener('keydown', (event) => {
+                        if (event.keyCode === 13 ||  event.key === 'Enter') {
+                            let pronoun = event.target;
+                            let pronounDropdown = document.querySelector('#service-pronoun');
+                            pronounDropdown.setAttribute('data-value', pronoun.getAttribute('val'))
+                        }else if(event.keyCode === 27 ||  event.key === 'Escape' || event.key === 'Tab' || event.keyCode === 9){
+                           window.handleEscapeInDropDown(event);
+                        }
+                    });
+                }
+            }
+        }
+        _checkAdditionalCreateAccountValues(){
+            let brandName = document.querySelector('.section-api-container')?.dataset.brand;
+            const executionPlanAction = localStorage.getItem(ecommerceConstants.actionLSLabel);
+            localStorage.removeItem("showAdditionalDetails");
+            if(executionPlanAction && 
+                ((activationUtil.getActivationCookie()?.flow===ecommerceConstants.flow_newact && executionPlanAction===ecommerceConstants.ACTIVATION) || 
+                (activationUtil.getActivationCookie()?.flow===ecommerceConstants.LBL_FLOWTYPE_EXTERNAL && executionPlanAction===ecommerceConstants.EXTERNAL_PORT) || 
+                (activationUtil.getActivationCookie()?.flow===ecommerceConstants.LBL_FLOWTYPE_INTERNAL && executionPlanAction===ecommerceConstants.INTERNAL_PORT)) && 
+                this.currentFlowType === ecommerceConstants.activationFlowType){
+                    document.querySelector('.user-account-firstname')?.classList.remove('d-none');
+                    document.querySelector('.user-account-lastname')?.classList.remove('d-none');
+                    document.querySelector('.confirm-password-add')?.classList.remove('d-none');
+                    document.querySelector('.password-validation-error')?.classList.remove('d-none');
+                    document.querySelector('.confirm-password-alt')?.remove();
+                    document.querySelector('.user-account-email-address')?.classList.remove('mt-30');
+                    this._createAccountFields = true;
+                    localStorage.setItem("showAdditionalDetails","true");
+            }
+        }
+
+   
+     /** Address changes 1
+     * This is the listener method which listens to the event and auto-populate city and auto-select state value based in the entered zip
+     */
+     attachAutoPopulateCityStateListener() {
+        document.addEventListener('autoPopulateCityStateAdditional', async (event) => {
+            this._checkCreateAccount(event);
+		if(document.querySelector('#service-address-zip')){
+			let zipCode = document.querySelector('#service-address-zip').value;
+            if (zipCode && document.querySelector('#service-address-zip').classList.contains('success') && zipCode.length===5) {                
+                let cityState = await this._fetchCityStateForZipCode(zipCode);
+                if (cityState && cityState.city && cityState.city !== undefined && cityState.city !== "") {
+                    document.querySelector('#service-address-city').value= cityState.city;
+                    document.querySelector('#service-address-city').classList.add('success');
+                    document.querySelector('#service-address-city').classList.remove('error');
+                    document.querySelector('label[for="service-address-city"]').classList.add('active');
+                    document.querySelector('#service-address-zip-error')?.classList?.add('invisible');
+                    document.querySelector('#service-address-city-error').innerHTML='';
+
+                    const address1 = document.querySelector('#service-address1');
+                    if(address1&&(address1.value===''||address1.value===null)){
+                        address1?.classList.remove('success');
+                        address1?.classList.add('error');
+                        let scriptingKey = this.scriptingFieldMappingObj[address1?.id];
+                        this._setErrorClasses(address1, scriptingKey);
+                    }
+
+                    await this._checkZipCodeValidations(cityState,false);
+                    
+                    this._checkCreateAccount(event);
+                }
+                if (cityState && cityState.state && cityState.state !== undefined && cityState.state !== "") {
+                    const serviceStates = $('#service-state .option');
+                    for (let j = 0; j < serviceStates.length; j++){
+                        serviceStates[j]?.classList.remove('selected');
+                    }
+                    for (let i = 0; i < serviceStates.length; i++){
+                        if (serviceStates[i].getAttribute('val') === cityState.state) {
+                            //serviceStates[i].click();
+                            document.querySelector('#service-state').dataset.value=cityState.state;
+                            document.querySelector('#service-state>span').textContent=serviceStates[i].getAttribute('data-value');
+                            serviceStates[i]?.classList.add('selected');
+                            document.querySelector('#service-state').classList.remove('active');
+                            document.querySelector('#service-state').setAttribute('aria-expanded', ecommerceConstants.falseFlag);
+
+                            const address1 = document.querySelector('#service-address1');
+                            if(address1&&(address1.value===''||address1.value===null)){
+                                address1?.classList.remove('success');
+                                address1?.classList.add('error');
+                                let scriptingKey = this.scriptingFieldMappingObj[address1?.id];
+                                this._setErrorClasses(address1, scriptingKey);
+                            }
+                            await this._checkZipCodeValidations(cityState,false);
+                            this._checkCreateAccount(event);
+                            break;
+                        }
+                    }
+                }
+                this._element.dispatchEvent(new Event('blur', {
+                    'bubbles': true
+                }));
+            }else if(zipCode && zipCode.length!==5){
+                event?.detail?.element?.classList.remove('success');
+                event?.detail?.element?.classList.add('error');
+                let scriptingKey = this.scriptingFieldMappingObj[event?.detail?.element?.id];
+                this._setErrorClasses(event?.detail?.element, scriptingKey);
+			}else if(zipCode===''||zipCode===null){
+                await this._checkZipCodeValidations(null,true);
+            }
+		}
+        });
+    }
+    async _checkZipCodeValidations(cityState,checkZipCode=false){
+        if((cityState && cityState.country && cityState.country !== undefined && cityState.country !== "" && cityState.country!=='US')||checkZipCode===true){
+            const serviceStates = $('#service-state .option');
+            for (let j = 0; j < serviceStates.length; j++){
+                serviceStates[j]?.classList.remove('selected');
+            }
+                document.querySelector('#service-state').dataset.value="";
+                document.querySelector('#service-state>span').textContent="";
+                document.querySelector('#service-state>span')?.classList.add('selected');
+                document.querySelector('#service-state').classList.remove('active');
+                document.querySelector('#service-state').setAttribute('aria-expanded', ecommerceConstants.falseFlag);
+
+                document.querySelector('#service-address-city').value="";
+                document.querySelector('#service-address-city').classList.remove('success');
+                document.querySelector('#service-address-city').classList.remove('error');
+                document.querySelector('#service-address-city-error')?.classList?.add('invisible');
+                document.querySelector('#service-address-city-error').innerHTML='';
+
+                const address1 = document.querySelector('#service-address1')?.value;
+                if(address1){
+                    document.querySelector('#service-address-zip').value="";
+                    document.querySelector('#service-address-zip').classList.remove('success');
+                    document.querySelector('#service-address-zip').classList.add('error');
+                    let scriptingKey = this.scriptingFieldMappingObj[document.querySelector('#service-address-zip')?.id];
+                    this._setErrorClasses(document.querySelector('#service-address-zip'), scriptingKey);
+                }else{
+                    document.querySelector('#service-address-zip').value="";
+                    document.querySelector('#service-address-zip').classList.remove('success');
+                    document.querySelector('#service-address-zip').classList.remove('error');
+                    document.querySelector('#service-address-zip-error')?.classList?.add('invisible');
+                    document.querySelector('#service-address-zip-error').innerHTML='';
+
+                    document.querySelector('#service-address1').value="";
+                    document.querySelector('#service-address1')?.classList?.remove('success');
+                    document.querySelector('#service-address1')?.classList?.remove('error');
+                    document.querySelector('#service-address1-error')?.classList?.add('invisible');
+                    document.querySelector('#service-address1-error').innerHTML='';
+                }  
+        }
+    }
+    /**
+         * This is the listener method which listens to the event and set the addres data received from api in class variable and peoceed to next step if api returns the verified address.
+         */
+    attachSaveAddressFromApiListener() {
+        document.addEventListener('saveAddressDataListenerRegister', (event) => {
+            if (event.detail && event.detail.addressList) {
+                this.addressValues.addressLine1 = event.detail.addressList.addressLine1;
+                this.addressValues.addressLine2 = event.detail.addressList.addressLine2;
+                this.addressValues.city = event.detail.addressList.city;
+                this.addressValues.stateOrProvince = event.detail.addressList.stateOrProvince;
+                this.addressValues.zipCode = event.detail.addressList.zipCode;
+                this.addressValues.country = event.detail.addressList.country;
+            }
+            if (event.detail && event.detail.verifyLevelData === ecommerceConstants.ADDRESS_VERIFICATION_VERIFIED) {
+                document.querySelector('#service-address1').value=this.addressValues.addressLine1;
+                document.querySelector('#service-address2').value=this.addressValues.addressLine2;
+                document.querySelector('#service-address-zip').value=this.addressValues.zipCode;
+                document.querySelector('#service-address-city').value=this.addressValues.city;
+                document.querySelector('#service-state').dataset.value=this.addressValues.stateOrProvince;
+                this._registerAccount(false,true,true);
+                this._closeAddressModalEventDispatch();
+            }
+        });
+    }
+   /**
+ * This method will dispatch the event for closing the custom modal.
+ */
+_closeAddressModalEventDispatch() {
+    document.dispatchEvent(new CustomEvent("CloseCustomModal", {
+        "detail": {
+            "modalid": this.addressValidationModalId
+        }
+    }));
+}
+ attachApartmentValidationButtonListener() {
+        document.addEventListener('ApartmentValidationButtonClickRegister', async () => {
+            this.addressValues.addressLine1 = this._element.querySelector('#service-address1')?.value;
+            this.addressValues.addressLine2 = this._element.querySelector('#service-address2')?.value;     
+            this.addressValues.zipCode = this._element.querySelector('#service-address-zip')?.value;
+            this.addressValues.city = this._element.querySelector('#service-address-city')?.value;
+            this.addressValues.stateOrProvince = this._element.querySelector('#service-state')?.dataset.value;
+            activationUtil.apartmentAddressValidation(this.addressValidationModalId,this.addressValues,"true");
+        });
+    }
+    attachUseSuggestedAddressButtonListener() {
+        document.addEventListener('UseSuggestedAddressButtonClickRegister', async () => {
+            this._closeAddressModalEventDispatch();
+            document.querySelector('#service-address1').value=this.addressValues.addressLine1;
+            document.querySelector('#service-address2').value=this.addressValues.addressLine2;
+            document.querySelector('#service-address-zip').value=this.addressValues.zipCode;
+            document.querySelector('#service-address-city').value=this.addressValues.city;
+            document.querySelector('#service-state').dataset.value=this.addressValues.stateOrProvince;
+            this._registerAccount(false,true,true);
+            
+        });
+    }
+    
+    /**
+     * Address changes 2
+     * @param {String} {
+     *  @zipCode : Input zipcode to get the corresponding city state value from the map quest API
+     * 
+     * @returns {*|JSON}
+     */
+    async _fetchCityStateForZipCode(zipCode) {
+        let cityState = {};
+        let sectionContainer = document.querySelector('.section-api-container');
+        if (sectionContainer) {
+            let domain = sectionContainer.dataset.mapquestdomain;
+            let addressPath = sectionContainer.dataset.mapquestpath;
+            let key = sectionContainer.dataset.mapquestkey;
+            let apiUrl = domain + addressPath + "?key=" + key + "&location=" + zipCode + ",US&outFormat=json&maxResults=1";
+            const requestOptions = {
+                method: 'GET'
+            };
+            apiUtil.showLoaderIcon();
+            try {
+                const response = await fetch(apiUrl, requestOptions);
+                apiUtil.removeLoaderIcon();
+                let data = await response.json();
+                if (data && data !== undefined && data.info && data.info !== undefined && data.info.statuscode !== undefined) {
+                    if (data.info.statuscode == 0 && data.results[0].locations[0]) {
+                        cityState.city = data?.results[0]?.locations[0]?.adminArea5;
+                        cityState.state = data?.results[0]?.locations[0]?.adminArea3;
+                        cityState.country = data?.results[0]?.locations[0]?.adminArea1;
+                    }
+                }
+            } catch (e) {
+                apiUtil.removeLoaderIcon();
+            }
+        }
+        return cityState;
+    }
+     /* address changes
+     * Function to get value from Form
+     * @param {STRING} { @elementId - element Id                  
+     * 					}
+     */
+     _getUserInputValue(elementId) {
+        let value = "";
+        if (this._element.querySelector('#' + elementId))
+            value = this._element.querySelector('#' + elementId).value
+        return value;
+    }
+    
+
+    /**
+         * This is the listener method which listens to the event and set the addres data received from api in class variable and peoceed to next step if api returns the verified address.
+         */
+        attachSaveAddressFromApiListener() {
+            document.addEventListener('saveAddressDataListenerRegister', (event) => {
+                if (event.detail && event.detail.addressList) {
+                    this.addressValues.addressLine1 = event.detail.addressList.addressLine1;
+                    this.addressValues.addressLine2 = event.detail.addressList.addressLine2;
+                    this.addressValues.city = event.detail.addressList.city;
+                    this.addressValues.stateOrProvince = event.detail.addressList.stateOrProvince;
+                    this.addressValues.zipCode = event.detail.addressList.zipCode;
+                    this.addressValues.country = event.detail.addressList.country;
+                }
+                if (event.detail && event.detail.verifyLevelData === ecommerceConstants.ADDRESS_VERIFICATION_VERIFIED) {
+                    document.querySelector('#service-address1').value=this.addressValues.addressLine1;
+                    document.querySelector('#service-address2').value=this.addressValues.addressLine2;
+                    document.querySelector('#service-address-zip').value=this.addressValues.zipCode;
+                    document.querySelector('#service-address-city').value=this.addressValues.city;
+                    document.querySelector('#service-state').dataset.value=this.addressValues.stateOrProvince;
+                    this._registerAccount(false,true,true);
+                    this._closeAddressModalEventDispatch();
+                }
+            });
+        }
+       /**
+     * This method will dispatch the event for closing the custom modal.
+     */
+    _closeAddressModalEventDispatch() {
+        document.dispatchEvent(new CustomEvent("CloseCustomModal", {
+            "detail": {
+                "modalid": this.addressValidationModalId
+            }
+        }));
+    }
+     attachApartmentValidationButtonListener() {
+            document.addEventListener('ApartmentValidationButtonClickRegister', async () => {
+                this.addressValues.addressLine1 = this._element.querySelector('#service-address1')?.value;
+                this.addressValues.addressLine2 = this._element.querySelector('#service-address2')?.value;     
+                this.addressValues.zipCode = this._element.querySelector('#service-address-zip')?.value;
+                this.addressValues.city = this._element.querySelector('#service-address-city')?.value;
+                this.addressValues.stateOrProvince = this._element.querySelector('#service-state')?.dataset.value;
+                activationUtil.apartmentAddressValidation(this.addressValidationModalId,this.addressValues,"true");
+            });
+        }
+
+        attachUseSuggestedAddressButtonListener() {
+            document.addEventListener('UseSuggestedAddressButtonClickRegister', async () => {
+                this._closeAddressModalEventDispatch();
+                document.querySelector('#service-address1').value=this.addressValues.addressLine1;
+                document.querySelector('#service-address2').value=this.addressValues.addressLine2;
+                document.querySelector('#service-address-zip').value=this.addressValues.zipCode;
+                document.querySelector('#service-address-city').value=this.addressValues.city;
+                document.querySelector('#service-state').dataset.value=this.addressValues.stateOrProvince;
+                this._registerAccount(false,true,true);
+                
+            });
+        }
+
+    /**
+     * Attach create account submission
+     */
+    _attachFacebookSubmitListener() {
+        let btnContinue = this._element.querySelector('#createAccountFBBtn');
+        if(btnContinue) {
+            const isActivationFlow = document.querySelector(".activation-flow-wrapper") ? true : false;
+            const isPurchaseFlow = document.querySelector(".purchase-flow-wrapper") ? true : false;
+            const flow = isActivationFlow ? isActivationFlow:isPurchaseFlow;
+            btnContinue.addEventListener('click', (event) => {
+                this._registerFBAccount(flow);
+            });
+        }
+        const activationLoginTabFbBtn = document.querySelector('.login-createaccount-container .login-tab-userauth .facebook-btn');
+        if (activationLoginTabFbBtn) {
+            activationLoginTabFbBtn.addEventListener('click', (event) => {
+                this._registerFBAccount(true);
+            });
+        }
+    }
+
+    /**
+     * Open the facebook page and moves to next step for register-update account.
+     */
+    async _registerFBAccount(isActivationFlow) {
+        const modalName = isActivationFlow ? "" : ecommerceConstants.LBL_LOGIN_MODAL;
+        let response = await loginUtil.loginUsingFB(modalName);
+        if(response && response.accountUnlinkedStatus) {
+            if(response.accountUnlinkedStatus === true) {
+                if(response.userDetails) {
+                    let userDetails = response.userDetails;
+                    this.fbUserDetails = userDetails;
+                    if(userDetails.email) {
+                        /* get email from fbUserDetails */
+                        const fbUserDetailEmail = userDetails.email;
+                        /* Switch to Create Account tab in Activation login screen */
+                        if(isActivationFlow)
+                            document.querySelector("#profile-tab")?.click();
+                        /* Set email id in the form */
+                        this._element.querySelector('#registerEmailAddress').value = fbUserDetailEmail;
+						this._element.querySelector('label[for="registerEmailAddress"]').classList.add('active');
+						if(this._element.querySelector('#fbRegisterAccount'))
+							this._element.querySelector('#fbRegisterAccount').classList.add('d-none');
+                    }
+                }
+            } else if(response.accountUnlinkedStatus === false) {
+                if (isActivationFlow)
+                    window.location.reload();
+                else
+                    /*Redirect to My account Link*/
+                    loginUtil._redirectAfterLogin(this._state.myAccountUrl, this._state.eventDetailObj);
+            }
+        }
+    }
+
+    /**
+     * Checks for account details entered and moves to next step for register-update account.
+     */
+    async _registerAccount(showAdditionSection = false, callAdditionalDetails = false, addressValidationButtonClickAdditional = false,skipAdditionalDetails=false) {
+        if (showAdditionSection && showAdditionSection === true && !window.isActivationWebviewEnabled()) {
+            loginUtil.setCreateAccountSecondSection();
+        } else {
+            let fbDetailsObj = '';
+            if (JSON.stringify(this.fbUserDetails) !== JSON.stringify({})) {
+                fbDetailsObj = this.fbUserDetails;
+            }
+            //re verifying that customer hasn't updated the email which was validated before.
+            const enableAccountCreationValidation = document.querySelector('.section-api-container').dataset.enableaccountcreationvalidation;
+            if (enableAccountCreationValidation==="true") {
+                let emailInput = this._element.querySelector('#registerEmailAddress');
+                if (emailInput && emailInput.dataset.valid_real_email!=emailInput.value) {
+                    return;
+                }
+            }
+            if (window.isActivationWebviewEnabled()) {
+                loginUtil.registerAccount(this._element, this._state?.isActivationFlow, fbDetailsObj, this._modalBody,this._state?.isPurchaseFlow); 
+            } else {
+                loginUtil.registerAccount(this._element, this._state.isActivationFlow, fbDetailsObj, this._modalBody,this._state.isPurchaseFlow,callAdditionalDetails,addressValidationButtonClickAdditional,skipAdditionalDetails);
+            }
+        }
+    }
+
+    /**
+     * This method will remove data-target from learn more and why I need this modal close button to keep #myAccLogin modal from opening
+     */
+    _removeLinkTargetForActivation() {
+        if(this._state.isActivationFlow || this._state.isPurchaseFlow)
+            document.querySelector('#loginLearnMore button.close')?.removeAttribute('data-target');
+    }
+    /**
+     * Handle Real dummy account scenario
+     */
+    _popuateDummyRealEmails(){
+       const dummyRealEmail = loginUtil.getMaskedEmail();
+        if(dummyRealEmail){
+            this._element.querySelector('#registerEmailAddress').value = dummyRealEmail;
+            this._element.querySelector('#registerEmailAddress').dataset.valid_real_email = dummyRealEmail;
+            this._element.querySelector('#registerEmailAddress').classList.add('success');
+			this._element.querySelector('label[for="registerEmailAddress"]').classList.add('active');
+            this._element.querySelector('#registerEmailAddress').dispatchEvent(new Event('keyup', {'key': ''}));
+            this._element.querySelector('#registerEmailAddress').dispatchEvent(new Event('blur', {
+                'bubbles': true
+            }));
+            this._element.querySelector('#registerEmailAddress').disabled="disabled";
+            this._element.querySelector('#registerEmailAddress').style="opacity:1;background:#e9ecef";
+        }
+    }
+    /**
+     * Handle Real dummy account scenario
+     */
+    _popuateDummyRealEmails(){
+       const dummyRealEmail = loginUtil.getMaskedEmail();
+        if(dummyRealEmail){
+            this._element.querySelector('#registerEmailAddress').value = dummyRealEmail;
+            this._element.querySelector('#registerEmailAddress').dataset.valid_real_email = dummyRealEmail;
+            this._element.querySelector('#registerEmailAddress').classList.add('success');
+			this._element.querySelector('label[for="registerEmailAddress"]').classList.add('active');
+            this._element.querySelector('#registerEmailAddress').dispatchEvent(new Event('keyup', {'key': ''}));
+            this._element.querySelector('#registerEmailAddress').dispatchEvent(new Event('blur', {
+                'bubbles': true
+            }));
+            this._element.querySelector('#registerEmailAddress').disabled="disabled";
+            this._element.querySelector('#registerEmailAddress').style="opacity:1;background:#e9ecef";
+        }
+    }
+
+    _attachRealEmailCheckValidation(){
+        const dummyRealEmail = loginUtil.getMaskedEmail();
+        if(!dummyRealEmail){
+            this._element.querySelector('#registerEmailAddress').addEventListener('blur',(event)=>{
+                let inputObj = event.target;
+                let needsValidation = true;
+                if(inputObj.dataset['valid_real_email']===inputObj.value){
+                    needsValidation = false;
+                }
+                if (!inputObj?.classList?.contains(window.isActivationWebviewEnabled() ? "errorWebview" : "error") && needsValidation) {
+                    this._doRealEmailCheck(inputObj.value, inputObj);
+                }
+            });
+        }
+    }
+
+    async _doRealEmailCheck(email,inputObj){
+        const response = await loginUtil.doRealEmailCheck(email);
+        if(response?.status?.code!="0"){
+            let scriptErrCode = response.status.code;
+            inputObj?.classList?.remove("success");
+		    inputObj?.classList?.add("error");
+            if(scriptErrCode === ecommerceConstants.EMAIL_VALIDATION_FRESH_ADDRESS_ERROR){
+                let errDesc = response.status.description;
+                if(errDesc!=null && errDesc.indexOf("_")!=-1){
+                    errDesc = errDesc.split("_");
+                    scriptErrCode = errDesc.pop();
+                    //scriptErrCode = ecommerceConstants.ERROR_EMAIL_VALIDATION + "FRESH_ADDRESS_" + errDesc;
+                }
+            }
+            let errTemplateStr = await apiUtil.getScriptingValue(ecommerceConstants.ERROR_EMAIL_VALIDATION_TEMPLATE_MAP);
+            const errTmpObj = {}, re = new RegExp('(.*?):(.*?)(?:,|$)','g')
+            errTemplateStr.replace(re, (_, key, value) => errTmpObj[key.trim()] = value.trim());
+            scriptErrCode = ecommerceConstants.ERROR_EMAIL_VALIDATION + errTmpObj[scriptErrCode];
+            let errMsg = await apiUtil.getScriptingValue(scriptErrCode);
+            if(errMsg == null || errMsg ==''){
+                errMsg = inputObj.dataset['data-error-invalid'].value;
+            }
+			
+            inputObj.parentElement.nextElementSibling.innerHTML = errMsg;
+            if (window.isActivationWebviewEnabled() && inputObj.id == "registerEmailAddress") {
+                document.querySelector('[for="registerEmailAddress"]')?.classList.add("activationErrorLabel");
+                document.querySelector(".error-text-handle-style")?.classList.add("error-text");
+                document.querySelector("#registerEmailAddress").classList.add("errorWebview");
+            }
+
+            //re-validating the form to avoid form validation.
+            delete inputObj.dataset.valid_real_email;
+            checkSuccess();
+        }else{
+            inputObj.dataset.valid_real_email=email;
+            if(window.isActivationWebviewEnabled() && inputObj.id == "registerEmailAddress") {
+                inputObj?.classList?.add("success");
+                let hintTxt = await apiUtil.getScriptingValue(ecommerceConstants.WEBVIEW_LBL_HINT_TEXT_EMAIL);
+                console.log(hintTxt,"hintTxt");
+                document.querySelector(".reg-email").innerHTML = hintTxt;
+                checkSuccess();
+            }
+            if (document.activeElement?.id === "createAccountBtn") {
+                checkSuccess();
+                document.activeElement.click();
+            }
+        }
+    }
+
+}
+
+(function(document) {
+    function onDocumentReady() {
+        const registerUpdateContainer = document.querySelector('.registerUpdateActContainer');
+        if(!registerUpdateContainer) {
+            return;
+        } else {
+            new RegisterUpdateActComponent({
+                element: registerUpdateContainer
+            });
+        }
+
+    }
+
+    if(document.readyState !== 'loading') {
+        onDocumentReady();
+    } else {
+        document.addEventListener('DOMContentLoaded', onDocumentReady);
+    }
+    document.addEventListener('LoginContentLoaded', onDocumentReady);
+    document.addEventListener('activationXFContentLoaded', onDocumentReady);
+    document.addEventListener('PurchaseXFContentLoaded', onDocumentReady);
+})(window.document);
+export default RegisterUpdateActComponent;
