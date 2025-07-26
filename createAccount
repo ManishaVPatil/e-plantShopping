@@ -1,7 +1,7 @@
 import React, { Component, useEffect } from 'react';
 import { connect } from 'react-redux';
 import PropTypes from 'prop-types';
-import _, { last } from 'underscore';
+import _ from 'underscore';
 import * as constantValues from '../../../store/constants/config';
 import CreateAccountModalForm from '../../UI/Forms/Forms';
 import Backdrop from '../../../components/UI/Backdrop/Backdrop';
@@ -71,7 +71,12 @@ class UserCreateAccount extends Component {
             addressLin2Unit: null,
             emailValidationData: null,
             currentFlowType: authDetailDataUtil.getCookie(constantValues.FLOW_TYPE_COOKIE_NAME),
-            _createAccountFields: false
+            _createAccountFields: false,
+            customerObj: null,
+            frFirstName: '',
+            frLastName: '',
+            ctnBtnDisable: true,
+            birthDateValid: false
         };
 
         this.learnMoreLinkRef = React.createRef();  //create a ref to store the learn more link DOM element
@@ -85,7 +90,6 @@ class UserCreateAccount extends Component {
     // ...
     /* This function is invoked immediately after a component is mounted (inserted into the tree) */
     componentDidMount() {
-        console.log("currentFlowType", this.state.currentFlowType)
         if (this.props?.errorMessage && this.props.fromIndirectPay && this.props.errorCode === '10402' && document.getElementById("createAccountEmail")) {
             document.getElementById("createAccountEmail").focus();
 
@@ -141,8 +145,6 @@ class UserCreateAccount extends Component {
         if (this.props.isTabletFlow) {
             this.setState({ ageConsent: true, showAgentConsent: false });
         }
-        this.checkAdditionalCreateAccountValues()
-        console.log(this.state._createAccountFields, "mnm")
     }
 
 
@@ -152,13 +154,18 @@ class UserCreateAccount extends Component {
      */
 
     registerAccountHandler = (data) => {
-
-        let email = null, password = null, securityPin = null, securityPin1 = null, rememberMe = null, customerObject = null, esn = null, zipCode = null, webObjId = null;
+        let email = null, password = null, firstName = null, lastName = null, securityPin = null, securityPin1 = null, rememberMe = null, customerObject = null, esn = null, zipCode = null, webObjId = null;
         if (window.checkIsForgeRockEnabled()) {
             email = data.email;
             password = data.password;
             securityPin = data.pin;
             rememberMe = data.rememberMe
+            if (this.state._createAccountFields) {
+                firstName = data.firstName;
+                lastName = data.lastName;
+                this.setState({ frFirstName: data.firstName });
+                this.setState({ frLastName: data?.lastName });
+            }
         } else {
             if (this.state.showRememberMe && !_.isEmpty(this.createAccountRememberMeRef.current.value)) {
                 rememberMe = this.createAccountRememberMeRef.current.checked;
@@ -210,36 +217,14 @@ class UserCreateAccount extends Component {
         /*create the customer object to pass in api.*/
         customerObject = authDetailDataUtil.getCustomerObject(email, password, securityPin, zipCode, esn, webObjId, this.props.resetUser, this.props.fromIndirectPay)
         /* trigger the createAccount call by passing customer object*/
-
-        this.setState({ showMoreDetails: true })
-
-        // if (!_.isEmpty(customerObject)) {
-        //     this.props.createAccount(customerObject);
-        // }
-    }
-
-    checkAdditionalCreateAccountValues() {
-        let brandName = document.querySelector('.section-api-container')?.dataset.brand;
-        const executionPlanAction = localStorage.getItem('executionPlanAction');
-        localStorage.removeItem("showAdditionalDetails");
-        console.log(getActivationCookie()?.flow === constantValues.NEW_ACTIVATION_TYPE && executionPlanAction === constantValues.ACTION_TYPE_ACTIVATION, "kkk")
-
-        console.log(this.state.currentFlowType === constantValues.ACTIVATION_FLOW_TYPE, this.currentFlowType, "ppp")
-        if (executionPlanAction &&
-            ((getActivationCookie()?.flow === constantValues.NEW_ACTIVATION_TYPE && executionPlanAction === constantValues.ACTION_TYPE_ACTIVATION) ||
-                (getActivationCookie()?.flow === constantValues.EXTERNAL_TYPE && executionPlanAction === constantValues.EXTERNAL_PORT) ||
-                (getActivationCookie()?.flow === constantValues.INTERNAL_TYPE && executionPlanAction === constantValues.INTERNAL_PORT)) &&
-            this.state.currentFlowType === constantValues.ACTIVATION_FLOW_TYPE) {
-            this.setState({ _createAccountFields: true });
-            localStorage.setItem("showAdditionalDetails", "true");
+        if (this.state._createAccountFields) {
+            this.setState({ showMoreDetails: true });
+            this.setState({ customerObj: customerObject })
         }
-    }
 
-    continueCreateAccount = () => {
-        this.setState({ showMoreDetails: true })
-    }
-    handleShowAdditionalDetail = () => {
-        this.setState({ showMoreDetails: true })
+        if (!_.isEmpty(customerObject) && !this.state._createAccountFields) {
+            this.props.createAccount(customerObject);
+        }
     }
 
     handleCreateAccount = () => {
@@ -350,15 +335,40 @@ class UserCreateAccount extends Component {
         else { return emailValue !== '' && pinValue !== '' && confirmPinValue !== '' && pinValue === confirmPinValue; }
     };
 
+    isAdditionalInfoProvided = () => {
+        const { phoneNumber } = this.props?.shippingInfo || {};
+        const { zipCode: { isValid: zipValid } = { isValid: false } } = this.props?.shippingAddressInfo || {};
+        const isBirthDateValid = this.state.birthDateValid;
+        const phoneLengthInvalid = phoneNumber && phoneNumber.length !== 14;
+        // Logic to decide new value for ctnBtnDisable
+        if (isBirthDateValid && phoneLengthInvalid) {
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
 
     static getDerivedStateFromProps(props, state) {
         let flag = props?.errorMessage && props.fromIndirectPay && props.errorCode === '10402';
-        const createAccountFields = state._createAccountFields
+        let createAccountFields = false;
         /* get email from fbUserDetails */
         const fbUserDetailEmail = !_.isEmpty(props.fbUserDetails) ? props.fbUserDetails.email : "";
         const finalAPIPath = props.scriptingJson[constantValues.ERROR_MESSAGE_API_PATH_MAPPING["createAccountErrorMessage"]];
         // after CI pull on 20-07-2022, rememberMeCookie is of no use
         // const rememberMeCookie = authDetailDataUtil.getCookie(constantValues.REMEMBER_ME_COOKIE_NAME,"true")?.replaceAll('"',"");
+
+        let brandName = document.querySelector('.section-api-container')?.dataset.brand;
+        const executionPlanAction = localStorage.getItem('executionPlanAction');
+        localStorage.removeItem("showAdditionalDetails");
+        if (executionPlanAction &&
+            ((getActivationCookie()?.flow === constantValues.NEW_ACTIVATION_TYPE && executionPlanAction === constantValues.ACTION_TYPE_ACTIVATION) ||
+                (getActivationCookie()?.flow === constantValues.EXTERNAL_TYPE && executionPlanAction === constantValues.EXTERNAL_PORT) ||
+                (getActivationCookie()?.flow === constantValues.INTERNAL_TYPE && executionPlanAction === constantValues.INTERNAL_PORT)) &&
+            state.currentFlowType === constantValues.ACTIVATION_FLOW_TYPE) {
+            createAccountFields = true;
+            localStorage.setItem("showAdditionalDetails", "true");
+        }
 
         return {
             formDefinition: {
@@ -686,7 +696,8 @@ class UserCreateAccount extends Component {
                     "label": "Pronoun",
                     "isValid": false
                 }
-            }
+            },
+            _createAccountFields: createAccountFields
         }
     }
 
@@ -713,7 +724,11 @@ class UserCreateAccount extends Component {
 
     componentDidUpdate(prevProps, prevState) {
         if (prevProps.validRealEmailCheck != this.props.validRealEmailCheck && this.props.validRealEmailCheck) {
-            this.registerAccountHandler();
+            if(this.state.emailValidationData){
+                this.registerAccountHandler(this.state.emailValidationData);
+            }else{
+                this.registerAccountHandler();
+            }
         }
     }
 
@@ -820,6 +835,25 @@ class UserCreateAccount extends Component {
             target: { name: 'birthDate', value: value },
         });
     };
+
+    checkBirthdayVal = (event) => {
+        const value = event?.target?.value || '';
+        const ele = document.querySelector('#birthDateInfoerror');
+        if (ele) {
+            document.querySelector('#birthDateInfoerror').classList.add('d-none');
+        }
+        // Regular expression for MM/DD
+        const isValidFormat = /^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])$/.test(value);
+        if (isValidFormat && value.length > 0) {
+            this.setState({ birthDateValid: true })
+            if (ele) {
+                document.querySelector('#birthDateInfoerror').classList.remove('d-none');
+            }
+        }
+
+
+    }
+
     formatDateToDDMMYYYY = (date) => {
         const [month, day] = date.split("/");
         this.setState({ formattedBirthdate: `${month}-${day}-1752` });
@@ -917,61 +951,26 @@ class UserCreateAccount extends Component {
 
     handleMoreDetailsApiCall = (nameNumber, address) => {
 
-        let email = null, password = null, securityPin = null, securityPin1 = null, rememberMe = null, customerObject = null, esn = null, zipCode = null, webObjId = null;
-
-
-        if (!_.isUndefined(this.props.createAccountFormInfo) && !_.isUndefined(this.props.createAccountFormInfo["emailAddress"]) && !_.isUndefined(this.props.createAccountFormInfo["password"]) && !_.isUndefined(this.props.createAccountFormInfo["securityPin"])) {
-            email = this.props.createAccountFormInfo["emailAddress"].value;
-            password = this.props.createAccountFormInfo["password"].value;
-            securityPin = this.props.createAccountFormInfo["securityPin"].value;
-            securityPin1 = this.props.createAccountFormInfo["securityPin1"]?.value;
-        }
-
-        /* save email in encrypted form in cookie for 1 year if rememberMe value is true*/
-        if (!_.isEmpty(email) && _.isBoolean(rememberMe) && rememberMe === true) {
-            authDetailDataUtil.saveCookie(constantValues.REMEMBER_ME_COOKIE_NAME, email, "true");
-        }
-        /**Find the zip code from cookie to pass in create account api */
-        if (this.props.transactionType === constantValues.CART_TRANSACTION_TYPE_ACTIVATION) {
-            zipCode = authDetailDataUtil.getValueFromCookieJson(constantValues.ZIP_CODE, authDetailDataUtil.getCookie(constantValues.ACTIVATE_COOKIE, "true"));
-        }
-        else if (this.props.transactionType === constantValues.CART_TRANSACTION_TYPE_REFILL) {
-            zipCode = authDetailDataUtil.getValueFromCookieJson(constantValues.ZIP_CODE_COOKIE_NAME, authDetailDataUtil.getCookie(constantValues.REFILL_COOKIE, "true"));
-        }
-        else {
-            zipCode = authDetailDataUtil.getCookie(constantValues.COOKIE_NAME_LOCATION, "false");
-        }
-
-        /**If transaction flow is hpp then get the esn from phone cookie & pass to create account object*/
-        if (this.props.transactionType === constantValues.CART_TRANSACTION_TYPE_HPP_STANDALONE) {
-            esn = checkoutDetailDataUtil.getPhoneCookieArray()[0];
-        } else if (this.props.transactionType === constantValues.CART_TRANSACTION_TYPE_ACTIVATION) {
-            esn = authDetailDataUtil.getValueFromCookieJson(constantValues.ESN, authDetailDataUtil.getCookie(constantValues.ACTIVATE_COOKIE, "true"));
-        }
-        else if (this.props.transactionType === constantValues.CART_TRANSACTION_TYPE_REFILL) {
-            esn = authDetailDataUtil.getValueFromCookieJson(constantValues.HANDSET_SERIAL_NO, authDetailDataUtil.getCookie(constantValues.REFILL_COOKIE, "true"));
-            //For Dummy Account, pass webObjId
-            if (/\b(v2|v3)\b/i.test(this.props.componentVersion) && new RegExp(constantValues.DUMMY_ACCOUNT, "i").test(localStorage.getItem(constantValues.ACCOUNT_STATUS))) {
-                webObjId = authDetailDataUtil.getValueFromCookieJson(constantValues.AID, authDetailDataUtil.getCookie(constantValues.REFILL_COOKIE, "true"));
-            }
-        } else if (this.props.transactionType === constantValues.CART_TRANSACTION_TYPE_VAS_STANDALONE) {
-            webObjId = localStorage.getItem("webObjId");
-        }
-
-        if (authDetailDataUtil.checkRealEmailWithNullPwd(this.props.scriptingJson) && webObjId == null) {
-            if (authDetailDataUtil.getCookieValue("accountId")) {
-                webObjId = authDetailDataUtil.getCookie("accountId", "true");
-                webObjId = webObjId.replaceAll("\"", "");
-            }
-        }
         /*create the customer object to pass in api.*/
-        customerObject = authDetailDataUtil.getCustomerObject(email, password, securityPin, zipCode, esn, webObjId, this.props.resetUser, this.props.fromIndirectPay)
+        let customerObject = this.state.customerObj;
         /* trigger the createAccount call by passing customer object*/
         if (!_.isEmpty(customerObject)) {
+            if (window.checkIsForgeRockEnabled()) {
+                customerObject = {
+                    ...customerObject,
+                    "firstName": this.state.frFirstName,
+                    "lastName": this.state.frLastName,
+                }
+            }
+            else{
+                customerObject = {
+                    ...customerObject,
+                    "firstName": this.props.createAccountFormInfo["firstName"].value,
+                    "lastName": this.props.createAccountFormInfo["lastName"].value,
+                }
+            }
             customerObject = {
                 ...customerObject,
-                "firstName": this.props.createAccountFormInfo["firstName"].value,
-                "lastName": this.props.createAccountFormInfo["lastName"].value,
                 "birthDate": this.state.formattedBirthdate,
                 "contactMedium": [
                     {
@@ -1092,8 +1091,7 @@ class UserCreateAccount extends Component {
                 statusMessage = this.props.scriptingJson[constantValues._LBL_CREATE_ACCOUNT_SUCCESS];
             }
         }
-        console.log(this.props.scriptingJson, "console.log(this.props.scriptingJson); mmmm");
-        /* Detrmine class for spacing between form and title */
+       /* Detrmine class for spacing between form and title */
         let spacingClassName = (!_.isEmpty(this.props.userAuthenticationStatus) && this.props.userAuthenticationStatus[constantValues.SHOW_CREATE_ACCOUNT]) ? "mt-30" : "mt-30 d-none";
         if (this.props.transactionType === constantValues.CART_TRANSACTION_TYPE_ACTIVATION || this.props.transactionType === constantValues.CART_TRANSACTION_TYPE_REFILL) {
             spacingClassName = "tab-pane fade";
@@ -1116,15 +1114,15 @@ class UserCreateAccount extends Component {
         }
         const isCheckboxEnabled = this.isInputProvided();
         const isAccountCreateButtonEnabled = this.isInputProvided();
+        const isContinueButtonEnabled = this.isAdditionalInfoProvided();
         const isHasPasswordAndCheckboxUnchecked = this.isCreateAccountButtonDisable()
-        const isRealValidEmailCheckEnabled = this.props.scriptingJson[constantValues.ENABLE_ACCOUNT_CREATION_VALIDATION] === "true" ? true : false;
+        const isRealValidEmailCheckEnabled = this.props.scriptingJson[constantValues.ENABLE_ACCOUNT_CREATION_VALIDATION] === "true" ? true : true;
         const {
             birthDate,
 
         } = this.state;
         const Pronouns = [SHE_HER, HE_HIM, THEY_THEM, LBL_OTHER];
 
-        console.log("formdefinition birthDate", birthDate)
         return (<div>
             <React.Fragment>
                 {this.props.createAccountLoading && <Backdrop show={this.props.createAccountLoading} />}
@@ -1161,13 +1159,14 @@ class UserCreateAccount extends Component {
                                                                 onChange={(event) => {
                                                                     { this.regexOnlyDateHandle(event, 4) }
                                                                 }}
+                                                                onBlur={(event) => { { this.checkBirthdayVal(event) } }}
                                                                 aria-label={LBL_BIRTHDATE}
                                                                 value={birthDate}
                                                                 name="birthDate"
                                                                 type="text"
                                                                 className='form-control'
                                                             />
-
+                                                            <p id="birthDateInfoerror" aria-live="off" class="error-text legal mt-10 d-none">{this.props.scriptingJson?._TF_ERR_INVALID_BIRTHDATE}</p>
                                                         </div>
                                                     </div>
                                                     <div className="col-6 pb-10 pr-0 pl-3">
@@ -1193,7 +1192,7 @@ class UserCreateAccount extends Component {
                                                     <button
                                                         // key={!isEnabled}
                                                         type="button"
-                                                        // disabled={ctnBtnDisable}
+                                                        disabled={!isContinueButtonEnabled}
                                                         className="btn"
                                                         buttonClass="medium primary-btn bg-danger mr-auto ml-auto"
                                                         id="user-create-account-continue-button"
@@ -1282,12 +1281,14 @@ class UserCreateAccount extends Component {
                                                                 onChange={(event) => {
                                                                     { this.regexOnlyDateHandle(event, 4) }
                                                                 }}
+                                                                onBlur={(event) => { { this.checkBirthdayVal(event) } }}
                                                                 aria-label={LBL_BIRTHDATE}
                                                                 value={birthDate}
                                                                 name="birthDate"
                                                                 type="text"
                                                                 className='form-control'
                                                             />
+                                                            <p id="birthDateInfoerror" aria-live="off" class="error-text legal mt-10 d-none">{this.props.scriptingJson?._TF_ERR_INVALID_BIRTHDATE}</p>
 
                                                         </div>
                                                     </div>
@@ -1314,7 +1315,7 @@ class UserCreateAccount extends Component {
                                                     <button
                                                         // key={!isEnabled}
                                                         type="button"
-                                                        // disabled={ctnBtnDisable}
+                                                        disabled={!isContinueButtonEnabled}
                                                         className="btn"
                                                         buttonClass="medium primary-btn bg-danger mr-auto ml-auto"
                                                         id="user-create-account-continue-button"
@@ -1576,7 +1577,6 @@ class UserCreateAccount extends Component {
                                                         data-gtm-cta="create_account_continue"
                                                         tabIndex={constantValues.TAB_INDEX_ZERO}
                                                         aria-label={createAccountFormValidity ? this.props.scriptingJson[constantValues._BTN_CONTINUE] : `${this.props.scriptingJson[constantValues._BTN_CONTINUE]} ${this.props.scriptingJson[constantValues.ARIA_BUTTON_DISABLED]}`}
-                                                        // onClick={() => this.continueCreateAccount()}
                                                         onClick={() => this.isEmailCheckRequired() ? this.emailCheckAndRegisterAccountHandler() : this.registerAccountHandler()}
                                                     >{this.props.scriptingJson ? this.props.scriptingJson[constantValues._BTN_CONTINUE] : constantValues._BTN_CONTINUE}</button>
                                                 </div>
