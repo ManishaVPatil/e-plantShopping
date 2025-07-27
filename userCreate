@@ -76,7 +76,8 @@ class UserCreateAccount extends Component {
             frFirstName: '',
             frLastName: '',
             ctnBtnDisable: true,
-            birthDateValid: false
+            birthDateValid: false,
+            birthDateTouched: false
         };
 
         this.learnMoreLinkRef = React.createRef();  //create a ref to store the learn more link DOM element
@@ -153,7 +154,7 @@ class UserCreateAccount extends Component {
      * This method is used here because the state depends on changes in scriptingJson prop over time.
      */
 
-    registerAccountHandler = (data) => {
+    registerAccountHandler = (data, guestAccount, isAddressNotEntered) => {
         let email = null, password = null, firstName = null, lastName = null, securityPin = null, securityPin1 = null, rememberMe = null, customerObject = null, esn = null, zipCode = null, webObjId = null;
         if (window.checkIsForgeRockEnabled()) {
             email = data.email;
@@ -217,9 +218,37 @@ class UserCreateAccount extends Component {
         /*create the customer object to pass in api.*/
         customerObject = authDetailDataUtil.getCustomerObject(email, password, securityPin, zipCode, esn, webObjId, this.props.resetUser, this.props.fromIndirectPay)
         /* trigger the createAccount call by passing customer object*/
-        if (this.state._createAccountFields) {
+
+        if (this.state._createAccountFields && !isAddressNotEntered) {
             this.setState({ showMoreDetails: true });
             this.setState({ customerObj: customerObject })
+        }
+        else if (this.state._createAccountFields && isAddressNotEntered) {
+            let _customerObject = this.state.customerObj;
+            if (window.checkIsForgeRockEnabled()) {
+                _customerObject = {
+                    ..._customerObject,
+                    "firstName": this.state.frFirstName,
+                    "lastName": this.state.frLastName,
+                    "birthDate": this.state.formattedBirthdate,
+                    "pronoun": this.state.pronoun,
+                }
+            }
+            else {
+                if (!_.isUndefined(this.props.createAccountFormInfo) && !_.isUndefined(this.props.createAccountFormInfo["firstName"]) && !_.isUndefined(this.props.createAccountFormInfo["lastName"])) {
+
+                    firstName = this.props.createAccountFormInfo["firstName"].value;
+                    lastName = this.props.createAccountFormInfo["password"].value;
+                    _customerObject = {
+                        ..._customerObject,
+                        "firstName": firstName,
+                        "lastName": lastName,
+                        "birthDate": this.state.formattedBirthdate,
+                        "pronoun": this.state.pronoun,
+                    }
+                }
+            }
+            this.props.createAccount(_customerObject);
         }
 
         if (!_.isEmpty(customerObject) && !this.state._createAccountFields) {
@@ -336,18 +365,90 @@ class UserCreateAccount extends Component {
     };
 
     isAdditionalInfoProvided = () => {
-        const { phoneNumber } = this.props?.shippingInfo || {};
-        const { zipCode: { isValid: zipValid } = { isValid: false } } = this.props?.shippingAddressInfo || {};
-        const isBirthDateValid = this.state.birthDateValid;
-        const phoneLengthInvalid = phoneNumber && phoneNumber.length !== 14;
-        // Logic to decide new value for ctnBtnDisable
-        if (isBirthDateValid && phoneLengthInvalid) {
-            return true;
+
+        const {
+
+            birthDate = '',
+
+            pronoun = '',
+
+            birthDateValid
+
+        } = this.state || {};
+
+        const shippingInfo = this.props?.shippingInfo || {};
+
+        const shippingAddress = this.props?.shippingAddressInfo || {};
+
+        const phoneNumber = shippingInfo?.phoneNumber || {};
+
+        const phoneEntered = !!phoneNumber.value;
+
+        const phoneValid = phoneNumber.isValid;
+
+        const birthDateValue = birthDate.trim();
+
+        const pronounValue = pronoun.trim();
+
+        const getField = (field) => shippingAddress?.[field]?.value?.trim() || '';
+
+        const isValid = (field) => shippingAddress?.[field]?.isValid === true;
+
+        const addressLine1 = getField('addressLine1');
+
+        const city = getField('city');
+
+        const state = getField('stateOrProvince');
+
+        const zip = getField('zipCode');
+
+        const isAnyAddressEntered = !!(addressLine1 || city || state || zip);
+
+        // ✅ Case 1: No info entered
+
+        if (!phoneEntered && !birthDateValue && !pronounValue && !isAnyAddressEntered) {
+
+            return true; // Allow continue if everything is empty
+
         }
-        else {
+
+        // ❌ Case 2: Phone or birthdate is entered but invalid
+
+        if ((phoneEntered && !phoneValid) || (birthDateValue && !birthDateValid)) {
+
             return false;
+
         }
-    }
+
+        // ❌ Case 3: If any address field is filled, all must be filled AND valid
+
+        if (isAnyAddressEntered) {
+
+            const areAllAddressFieldsEntered = addressLine1 && city && state && zip;
+
+            const areAllAddressFieldsValid =
+
+                isValid('addressLine1') &&
+
+                isValid('city') &&
+
+                isValid('stateOrProvince') &&
+
+                isValid('zipCode');
+
+            if (!areAllAddressFieldsEntered || !areAllAddressFieldsValid) {
+
+                return false;
+
+            }
+
+        }
+
+        return true; // All good
+
+    };
+
+
 
     static getDerivedStateFromProps(props, state) {
         let flag = props?.errorMessage && props.fromIndirectPay && props.errorCode === '10402';
@@ -381,6 +482,7 @@ class UserCreateAccount extends Component {
                         id: 'createAccountFirstName',
                         name: 'createAccountFirstName',
                         className: `form-control`,
+                        autoComplete: "off",
                         'aria-describedby': "firstNameCreateAccountFormInfoerror",
                         'aria-required': true,
                         'aria-label': `${props.scriptingJson[constantValues._LBL_ENTER]} ${props.scriptingJson[constantValues._LBL_FORM_FIRST_NAME_WITHOUT_ASTRIK]}`,
@@ -410,6 +512,7 @@ class UserCreateAccount extends Component {
                         id: 'createAccountLastName',
                         name: 'createAccountLastName',
                         className: `form-control`,
+                        autoComplete: "off",
                         'aria-describedby': "lastNameCreateAccountFormInfoerror",
                         'aria-required': true,
                         'aria-label': `${props.scriptingJson[constantValues._LBL_ENTER]} ${props.scriptingJson[constantValues._LBL_FORM_LAST_NAME_WITHOUT_ASTRIK]}`,
@@ -724,9 +827,9 @@ class UserCreateAccount extends Component {
 
     componentDidUpdate(prevProps, prevState) {
         if (prevProps.validRealEmailCheck != this.props.validRealEmailCheck && this.props.validRealEmailCheck) {
-            if(this.state.emailValidationData){
+            if (this.state.emailValidationData) {
                 this.registerAccountHandler(this.state.emailValidationData);
-            }else{
+            } else {
                 this.registerAccountHandler();
             }
         }
@@ -801,7 +904,14 @@ class UserCreateAccount extends Component {
     }
 
     handleButtonClick = () => {
-        this.setState({ displayAddressValidationModal: true })
+        const shippingAddress = this.props?.shippingAddressInfo || {};
+
+        if (shippingAddress?.addressLine1?.value || shippingAddress?.city?.value || shippingAddress?.country?.value || shippingAddress?.stateOrProvince?.value || shippingAddress?.zipCode?.value) {
+            this.setState({ displayAddressValidationModal: true })
+        }
+        else {
+            this.registerAccountHandler({}, '', true)
+        }
     }
 
     regexOnlyDateHandle = (event, count) => {
@@ -837,28 +947,33 @@ class UserCreateAccount extends Component {
     };
 
     checkBirthdayVal = (event) => {
+
         const value = event?.target?.value || '';
-        const ele = document.querySelector('#birthDateInfoerror');
-        if (ele) {
-            document.querySelector('#birthDateInfoerror').classList.add('d-none');
+
+        if (value.trim() === '') {
+            this.setState({ birthDateValid: true });
+            return;
         }
-        // Regular expression for MM/DD
         const isValidFormat = /^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])$/.test(value);
-        if (isValidFormat && value.length > 0) {
-            this.setState({ birthDateValid: true })
-            if (ele) {
-                document.querySelector('#birthDateInfoerror').classList.remove('d-none');
-            }
+
+        this.setState({ birthDateTouched: true });
+
+        if (isValidFormat) {
+            this.setState({ birthDateValid: true });
+        } else {
+            this.setState({ birthDateValid: false });
         }
 
+    };
 
-    }
+
 
     formatDateToDDMMYYYY = (date) => {
         const [month, day] = date.split("/");
         this.setState({ formattedBirthdate: `${month}-${day}-1752` });
         return `${day}-${month}-1752`;
     };
+
     handleChange = (event) => {
         const { name, value } = event.target;
         if (name === "phoneNumber") {
@@ -878,6 +993,7 @@ class UserCreateAccount extends Component {
                     this.setState({ formattedDate });
                 }
             });
+            this.checkBirthdayVal(event)
         }
     };
 
@@ -962,7 +1078,7 @@ class UserCreateAccount extends Component {
                     "lastName": this.state.frLastName,
                 }
             }
-            else{
+            else {
                 customerObject = {
                     ...customerObject,
                     "firstName": this.props.createAccountFormInfo["firstName"].value,
@@ -972,6 +1088,7 @@ class UserCreateAccount extends Component {
             customerObject = {
                 ...customerObject,
                 "birthDate": this.state.formattedBirthdate,
+                "pronoun": this.state.pronoun,
                 "contactMedium": [
                     {
                         "mediumType": "telephoneNumber",
@@ -988,11 +1105,6 @@ class UserCreateAccount extends Component {
                             "country": address?.country?.value,
                             "stateOrProvince": address?.stateOrProvince?.value,
                             "zipcode": address?.zipCode?.value
-                        }
-                    },
-                    {
-                        "contactDetails": {
-                            "phoneNumber": nameNumber?.phoneNumber?.value
                         }
                     }
                 ],
@@ -1091,7 +1203,7 @@ class UserCreateAccount extends Component {
                 statusMessage = this.props.scriptingJson[constantValues._LBL_CREATE_ACCOUNT_SUCCESS];
             }
         }
-       /* Detrmine class for spacing between form and title */
+        /* Detrmine class for spacing between form and title */
         let spacingClassName = (!_.isEmpty(this.props.userAuthenticationStatus) && this.props.userAuthenticationStatus[constantValues.SHOW_CREATE_ACCOUNT]) ? "mt-30" : "mt-30 d-none";
         if (this.props.transactionType === constantValues.CART_TRANSACTION_TYPE_ACTIVATION || this.props.transactionType === constantValues.CART_TRANSACTION_TYPE_REFILL) {
             spacingClassName = "tab-pane fade";
@@ -1164,10 +1276,18 @@ class UserCreateAccount extends Component {
                                                                 value={birthDate}
                                                                 name="birthDate"
                                                                 type="text"
-                                                                className='form-control'
+                                                                className={`form-control ${this.state.birthDateTouched && !this.state.birthDateValid
+                                                                    ? 'error'
+                                                                    : this.state.birthDate.trim() !== '' && this.state.birthDateValid
+                                                                        ? 'success'
+                                                                        : ''
+                                                                    }`}
                                                             />
-                                                            <p id="birthDateInfoerror" aria-live="off" class="error-text legal mt-10 d-none">{this.props.scriptingJson?._TF_ERR_INVALID_BIRTHDATE}</p>
+
                                                         </div>
+                                                        {this.state.birthDateTouched && !this.state.birthDateValid ?
+                                                            <p id="birthDateInfoerror" aria-live="off" className="error-text legal mt-10"> {this.props.scriptingJson?._TF_ERR_INVALID_BIRTHDATE}</p>
+                                                            : null}
                                                     </div>
                                                     <div className="col-6 pb-10 pr-0 pl-3">
 
@@ -1199,6 +1319,7 @@ class UserCreateAccount extends Component {
                                                         data-gtm-placement="checkout_login"
                                                         data-gtm-cta="create_account_continue"
                                                         aria-label="continue"
+                                                        style={{marginBottom:'1%'}}
                                                         onClick={this.handleButtonClick}
                                                     >
                                                         {this.props.scriptingJson[constantValues._BTN_CONTINUE]}
@@ -1227,7 +1348,7 @@ class UserCreateAccount extends Component {
                                                     "city": this.props?.shippingAddressInfo?.city?.value || '',
                                                     "stateOrProvince": this.props?.shippingAddressInfo?.stateOrProvince?.value || "",
                                                     "zipCode": this.props?.shippingAddressInfo?.zipCode?.value || "",
-                                                    "phoneNumber": this.props?.shippingInfo.phoneNumber?.value || "",
+                                                    "phoneNumber": this.props?.shippingInfo?.phoneNumber?.value || "",
                                                     "country": this.props?.shippingAddressInfo?.country?.value || ""
                                                 }}
                                                 validatedAddressVerifyLevel={this.props.validatedAddressVerifyLevel}
@@ -1286,11 +1407,17 @@ class UserCreateAccount extends Component {
                                                                 value={birthDate}
                                                                 name="birthDate"
                                                                 type="text"
-                                                                className='form-control'
+                                                                className={`form-control ${this.state.birthDateTouched && !this.state.birthDateValid
+                                                                    ? 'error'
+                                                                    : this.state.birthDate.trim() !== '' && this.state.birthDateValid
+                                                                        ? 'success'
+                                                                        : ''
+                                                                    }`}
                                                             />
-                                                            <p id="birthDateInfoerror" aria-live="off" class="error-text legal mt-10 d-none">{this.props.scriptingJson?._TF_ERR_INVALID_BIRTHDATE}</p>
-
                                                         </div>
+                                                        {this.state.birthDateTouched && !this.state.birthDateValid ?
+                                                            <p id="birthDateInfoerror" aria-live="off" className="error-text legal mt-10">{this.props.scriptingJson?._TF_ERR_INVALID_BIRTHDATE}</p>
+                                                            : null}
                                                     </div>
                                                     <div className="col-6 pb-10 pr-0 pl-3">
 
