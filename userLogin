@@ -1,0 +1,310 @@
+import React, { Component } from 'react';
+import PropTypes from 'prop-types';
+import _ from 'underscore';
+import EmailLogin from './EmailLogin/EmailLogin';
+import * as constantValues from '../../../store/constants/config';
+import UserCreateAccount from './../UserCreateAccount/UserCreateAccount';
+import OtpLogin from './OtpLogin/OtpLogin';
+import * as authDetailDataUtil from '../../../utils/AuthDetailDataUtil/AuthDetailDataUtil';
+
+const changeTabsFR = (e) => {
+    const target = e;
+    const parent = target.parentNode.parentNode;
+    const grandparent = parent.parentNode.parentNode.parentNode;
+    const modal = target.closest('.modal');
+
+    // Remove all current selected tabs
+    parent
+        .querySelectorAll('[aria-selected="true"]')
+        .forEach((t) => {
+            t.setAttribute("aria-selected", false);
+            t.setAttribute("tabindex", "-1");
+           // t.querySelectorAll('a[href], [tabindex]:not([tabindex="-1"])').forEach(e => e.setAttribute("tabindex", "-1" ))
+        });
+
+
+    // Set this tab as selected
+    target.setAttribute("aria-selected", true);
+    target.setAttribute("tabindex", '0');
+    // Hide all tab panels
+
+    grandparent.querySelectorAll('[role="tabpanel"]').forEach((p) => {
+        p.setAttribute("hidden", true);
+        p.classList.remove("active");
+        p.classList.remove("show");
+		p.setAttribute("tabindex", "-1");
+        // p.querySelectorAll('a[href], [tabindex]:not([tabindex="-1"])').forEach(e => e.setAttribute("tabindex", "-1" ))
+    });
+
+    // Show the selected panel
+    var selectedPanel = grandparent.querySelector(
+        `${target.getAttribute("href")}`
+    );
+    selectedPanel.removeAttribute("hidden");
+    selectedPanel.classList.add("active");
+    selectedPanel.classList.add("show");
+    // selectedPanel.setAttribute("tabindex", 0);
+    // selectedPanel.querySelectorAll('a[href], [tabindex="-1"]').forEach(e => e.setAttribute('tabindex', '0'));
+    // tabStop(modal,false);
+}
+
+class UserLogin extends Component{
+
+    constructor(props){
+        super(props);
+        this.containerRef = React.createRef();  //create a ref to store the container DOM element
+        this.loginLabelRef = React.createRef();  //create a ref to store the login label DOM element
+        this.loginLinkRef = React.createRef();  //create a ref to store the login link DOM element
+        this.createAccountLabelRef = React.createRef();  //create a ref to store the create account label DOM element
+        this.createAccountLinkRef = React.createRef();  //create a ref to store the create account link DOM element
+        this.loginAreaRef = React.createRef();  //create a ref to store the login area DOM element
+        this.tabListRef = React.createRef();
+    }
+    
+     /* This function is invoked immediately after a component is mounted (inserted into the tree) */
+     componentDidMount(){
+        if (this.props.transactionType === constantValues.CART_TRANSACTION_TYPE_ACTIVATION) {
+            if (/\b(v1)\b/i.test(this.props.componentVersion)) {
+                if (!_.isNull(this.containerRef.current))
+                    this.containerRef.current.className = "container pl-0 pr-0";
+                if (!_.isNull(this.loginLabelRef.current))
+                    this.loginLabelRef.current.className = "col-6 nav-item text-center tabs slide-tab px-0";
+                if (!_.isNull(this.loginLinkRef.current))
+                    this.loginLinkRef.current.className = "px-0 nav-link active text-uppercase";
+                if (!_.isNull(this.createAccountLabelRef.current))
+                    this.createAccountLabelRef.current.className = "col-6 nav-item text-center tabs slide-tab px-0";
+                if (!_.isNull(this.createAccountLinkRef.current))
+                    this.createAccountLinkRef.current.className = "px-0 nav-link text-uppercase";
+            } else if (/\b(v2)\b/i.test(this.props.componentVersion)) {
+                if (!_.isNull(this.containerRef.current)){
+                    this.containerRef.current.className = "";
+                }
+                if (!_.isNull(this.loginLabelRef.current)){
+                    this.loginLabelRef.current.className = "col-offset-lg-3 col-lg-3 col-6 nav-item text-center tabs slide-tab px-0";
+                }
+                if (!_.isNull(this.loginLinkRef?.current)){
+                    this.loginLinkRef.current.className = "px-0 nav-link active";
+                }
+                if (!_.isNull(this.createAccountLabelRef.current)){
+                    this.createAccountLabelRef.current.className = "col-offset-lg-3 col-lg-3 col-6 nav-item text-center tabs slide-tab px-0";
+                }
+                if (!_.isNull(this.createAccountLinkRef.current)){
+                    this.createAccountLinkRef.current.className = "px-0 nav-link";
+                }
+            }
+        }else if (this.props.transactionType === constantValues.CART_TRANSACTION_TYPE_CHECK_BALANCE) {
+            if (/\b(v2|v3)\b/i.test(this.props.componentVersion)) {
+                if (!_.isNull(this.containerRef.current)){
+                    this.containerRef.current.className = "container refill-tabs";
+                }
+                if(!_.isNull(this.tabListRef.current)){
+                    this.tabListRef.current.className = "nav w-100 with-slide position-relative justify-content-between justify-content-lg-center";
+                }
+                if (!_.isNull(this.loginLabelRef.current)){
+                    this.loginLabelRef.current.className = "col-6 col-lg-4 nav-item text-center tabs slide-tab px-0";
+                }
+                if (!_.isNull(this.loginLinkRef.current)){
+                    this.loginLinkRef.current.className = "px-0 nav-link active pb-15";
+                }
+                if (!_.isNull(this.createAccountLabelRef.current)){
+                    this.createAccountLabelRef.current.className = "col-6 col-lg-4 nav-item text-center tabs slide-tab px-0";
+                }
+                if (!_.isNull(this.createAccountLinkRef.current)){
+                    this.createAccountLinkRef.current.className = "px-0 nav-link pb-15";
+                }
+            }
+        }
+        if(window?.checkIsForgeRockEnabled()){
+            document.getElementById('basePageH1').remove();
+        }
+    }
+
+    render(){
+        const protectionLocalStorage = JSON.parse(localStorage.getItem('protection')) || (JSON.parse(localStorage.getItem("hpp")) || {}) ;
+        let createAccountSkipFlag = false;
+        if (!this.props.isLoggedIn && !_.isEmpty(protectionLocalStorage) && (!_.isEmpty(localStorage.getItem(constantValues.ACCOUNT_STATUS)) && localStorage.getItem(constantValues.ACCOUNT_STATUS).toUpperCase() === constantValues.VALID_ACCOUNT)) {
+            createAccountSkipFlag = true;
+        }
+        /* Determine flag to enable Login with Verification Code from "enableLoginWithVerificationCode" cookie */
+        const enableLoginWithVerificationCode = authDetailDataUtil.getCookie("enableLoginWithVerificationCode", constantValues.ARIA_HIDDEN_TRUE);  
+        
+        return (
+            <React.Fragment>
+                    <p className={/\b(v1)\b/i.test(this.props.componentVersion)&&!_.isEmpty(this.props.userAuthenticationStatus)&&this.props.userAuthenticationStatus[constantValues.SHOW_LOGIN]&&this.props.transactionType!==constantValues.CART_TRANSACTION_TYPE_ACTIVATION && this.props.transactionType!==constantValues.CART_TRANSACTION_TYPE_REFILL?"heading-four font-weight-bold":"heading-four font-weight-bold d-none"}>
+                    	{this.props.transactionType===constantValues.CART_TRANSACTION_TYPE_CHECK_BALANCE && !_.isEmpty(this.props.checkBalanceTitle) ? this.props.checkBalanceTitle : this.props.headlineLogin}</p>
+                    <div className={!_.isEmpty(this.props.userAuthenticationStatus)&&this.props.userAuthenticationStatus[constantValues.SHOW_LOGIN]?"container-fluid pl-0 pr-0 tabs-section w-100 activation-login-area":"container-fluid pl-0 pr-0 activation-login-area tabs-section w-100 d-none"} id="specifications">
+                        <div className="container pl-0 pr-0" ref={this.containerRef}>
+                            {/\b(v2|v3)\b/i.test(this.props.componentVersion)&&this.props.transactionType === constantValues.CART_TRANSACTION_TYPE_CHECK_BALANCE?
+                                <div className="row">
+                                    <div className="col">
+                                        <div className="mt-40 mb-50">
+                                            {/\b(v3)\b/i.test(this.props.componentVersion)?
+                                                <h1 className="heading-two color-blue">
+                                                    {this.props.scriptingJson[constantValues._LBL_CHECK_BALANCE_LOGIN_TITLE]}
+                                                </h1>:
+                                                <div className="heading-two color-blue">
+                                                    {this.props.scriptingJson[constantValues._LBL_CHECK_BALANCE_LOGIN_TITLE]}
+                                                </div>}
+                                            <div className="body-text pt-10">
+                                                {this.props.scriptingJson[constantValues._LBL_CHECK_BALANCE_LOGIN_DESCRIPTION]}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>:null}
+                            <div className={this.props.transactionType===constantValues.CART_TRANSACTION_TYPE_ACTIVATION || this.props.transactionType===constantValues.CART_TRANSACTION_TYPE_REFILL?"tab-selector pt-40":"tab-selector pt-30 pb-30"}>
+                                
+                            {window?.checkIsForgeRockEnabled() ? 
+                               ( <div className={this.props.transactionType===constantValues.CART_TRANSACTION_TYPE_ACTIVATION || this.props.transactionType===constantValues.CART_TRANSACTION_TYPE_REFILL?"row ml-0 mr-0 mb-40":"row ml-0 mr-0 mb-30"}>
+                                    <ul className="nav w-100 with-slide position-relative" id="myTab" role="tablist" ref={this.tabListRef} onKeyDown={(event) => window.selectTabs(document,event)}>
+                                        <li className="col-6 nav-item text-center tabs slide-tab px-0" ref={this.loginLabelRef} role="presentation">
+                                            <a onClick={(event) => changeTabsFR(event.target)} className="px-0 nav-link active text-uppercase" ref={this.loginLinkRef} id="home-tab" data-toggle="tab" href="#tab1" role="tab" aria-controls="tab1" aria-selected="true">{this.props.loginTab1}</a>
+                                        </li>
+                                        {new RegExp(`${constantValues.CART_TRANSACTION_TYPE_ACTIVATION}|${constantValues.CART_TRANSACTION_TYPE_REFILL}`,"i").test(this.props.transactionType) && !createAccountSkipFlag?
+                                            <li className="col-6 nav-item text-center tabs slide-tab px-0" ref={this.createAccountLabelRef} role="presentation">
+                                                <a onClick={(event) => changeTabsFR(event.target)} className="px-0 nav-link text-uppercase" ref={this.createAccountLinkRef} id="profile-tab" data-toggle="tab" href="#tab2" role="tab" aria-controls="tab2" aria-selected="false">
+                                                    {this.props.loginTab2}
+                                                </a>
+                                            </li>:null}
+                                        {new RegExp(`${constantValues.CART_TRANSACTION_TYPE_CHECK_BALANCE}`,"i").test(this.props.transactionType)&&!_.isEmpty(enableLoginWithVerificationCode)&&enableLoginWithVerificationCode==="true"?
+                                            <li className="col-6 nav-item text-center tabs slide-tab px-0" ref={this.createAccountLabelRef} role="presentation">
+                                                <a onClick={(event) => changeTabsFR(event.target)} className="px-0 nav-link text-uppercase" ref={this.createAccountLinkRef} id="otp-tab" data-toggle="tab" href="#tab3" role="tab" aria-controls="otpLogin" aria-selected="false">
+                                                    {this.props.scriptingJson[constantValues._LBL_VERIFICATION_CODE_PLACEHOLDER]}
+                                                </a>
+                                            </li>:null}
+                                        <span className="sliding-underline"></span>
+                                    </ul>
+                                </div> ) : ( <div className={this.props.transactionType===constantValues.CART_TRANSACTION_TYPE_ACTIVATION || this.props.transactionType===constantValues.CART_TRANSACTION_TYPE_REFILL?"row ml-0 mr-0 mb-40":"row ml-0 mr-0 mb-30"}>
+                                    <ul className="nav w-100 with-slide position-relative" id="myTab" role="tablist" ref={this.tabListRef} onKeyDown={(event) => window.selectTabs(document,event)}>
+                                        <li className="col-6 nav-item text-center tabs slide-tab px-0" ref={this.loginLabelRef} role="presentation">
+                                            <a onClick={(event) => window.changeTabs(event.target)} className="px-0 nav-link active text-uppercase" ref={this.loginLinkRef} id="home-tab" data-toggle="tab" href="#tab1" role="tab" aria-controls="tab1" aria-selected="true">{this.props.loginTab1}</a>
+                                        </li>
+                                        {new RegExp(`${constantValues.CART_TRANSACTION_TYPE_ACTIVATION}|${constantValues.CART_TRANSACTION_TYPE_REFILL}`,"i").test(this.props.transactionType) && !createAccountSkipFlag?
+                                            <li className="col-6 nav-item text-center tabs slide-tab px-0" ref={this.createAccountLabelRef} role="presentation">
+                                                <a onClick={(event) => window.changeTabs(event.target)} className="px-0 nav-link text-uppercase" ref={this.createAccountLinkRef} id="profile-tab" data-toggle="tab" href="#tab2" role="tab" aria-controls="tab2" aria-selected="false">
+                                                    {this.props.loginTab2}
+                                                </a>
+                                            </li>:null}
+                                        {new RegExp(`${constantValues.CART_TRANSACTION_TYPE_CHECK_BALANCE}`,"i").test(this.props.transactionType)&&!_.isEmpty(enableLoginWithVerificationCode)&&enableLoginWithVerificationCode==="true"?
+                                            <li className="col-6 nav-item text-center tabs slide-tab px-0" ref={this.createAccountLabelRef} role="presentation">
+                                                <a onClick={(event) => window.changeTabs(event.target)} className="px-0 nav-link text-uppercase" ref={this.createAccountLinkRef} id="otp-tab" data-toggle="tab" href="#tab3" role="tab" aria-controls="otpLogin" aria-selected="false">
+                                                    {this.props.scriptingJson[constantValues._LBL_VERIFICATION_CODE_PLACEHOLDER]}
+                                                </a>
+                                            </li>:null}
+                                        <span className="sliding-underline"></span>
+                                    </ul>
+                                </div> )}
+
+                                <div className={this.props.transactionType===constantValues.CART_TRANSACTION_TYPE_ACTIVATION || this.props.transactionType===constantValues.CART_TRANSACTION_TYPE_REFILL?(/\b(v2)\b/i.test(this.props.componentVersion)?"tab-content container px-lg-0":"tab-content"):"tab-content text-left"}>
+                                    <EmailLogin
+                                        scriptingJson={this.props.scriptingJson}
+                                        transactionType={this.props.transactionType}
+                                        loginLearnMoreLinkText={this.props.loginLearnMoreLinkText}
+                                        loginLearnMoreLinkModalContent={this.props.loginLearnMoreLinkModalContent}
+                                        whatIsThisLinkModalContent={this.props.whatIsThisLinkModalContent}
+                                        emailLoginFormInfo={this.props.emailLoginFormInfo}
+                                        emailLoginSuccess={this.props.emailLoginSuccess}
+                                        getCartMigrationAPISuccess={this.props.getCartMigrationAPISuccess}
+                                        postCartMigrationAPISuccess={this.props.postCartMigrationAPISuccess}
+                                        getCartMigrationData={this.props.getCartMigrationData}
+                                        postMigrationCallFlag={this.props.postMigrationCallFlag}
+                                        postCartMigrationErrorMessage={this.props.postCartMigrationErrorMessage}
+                                        postCartMigration={this.props.postCartMigration}
+                                        enableFacebookAuth={this.props.enableFacebookAuth}
+                                        airTimeBenefits={this.props.airTimeBenefits}
+                                        activationFlow={this.props.activationFlow}
+                                        serviceOrderCall={this.props.serviceOrderCall}
+                                        emailLogin={this.props.emailLogin}
+                                        recaptchaToken={this.props.recaptchaToken}
+                                        disableCaptcha={this.props.disableCaptcha}
+                                        facebookLogin={() => this.props.facebookLogin(false)}
+                                        updateDataInAuthStoreHandler={this.props.updateDataInAuthStoreHandler}
+                                        forgetPasswordHandler={this.props.forgetPasswordHandler}
+                                        forgetPasswordErrorMessage={this.props.forgetPasswordErrorMessage}
+                                        showForgetPasswordSuccessModal={this.props.showForgetPasswordSuccessModal}
+                                        callingForgetPassword={this.props.callingForgetPassword}
+                                        componentVersion={this.props.componentVersion}
+                                        isTabletFlow={this.props.isTabletFlow}/>
+                                    {this.props.transactionType===constantValues.CART_TRANSACTION_TYPE_ACTIVATION || (this.props.transactionType===constantValues.CART_TRANSACTION_TYPE_REFILL && !createAccountSkipFlag)?
+                                        <UserCreateAccount
+                                            headlineCreateAccount={this.props.headlineCreateAccount}
+                                            ageConsent={this.props.ageConsent}
+                                            scriptingJson={this.props.scriptingJson}
+                                            isVerificationCodeValidated={this.props.isVerificationCodeValidated}
+                                            whyNeedThisLinkText={this.props.whyNeedThisLinkText}
+                                            whyNeedThisLinkModalContent={this.props.whyNeedThisLinkModalContent}
+                                            learnMoreLinkText={this.props.learnMoreLinkText}
+                                            learnMoreLinkModalContent={this.props.learnMoreLinkModalContent}
+                                            createAccountFormInfo={this.props.createAccountFormInfo}
+                                            createAccountErrorMessage={this.props.createAccountErrorMessage}
+                                            transactionType={this.props.transactionType}
+                                            createAccountData={this.props.createAccountData}
+                                            userAuthenticationStatus={this.props.userAuthenticationStatus}
+                                            enableFacebookAuth={this.props.enableFacebookAuth}
+                                            airTimeBenefits={this.props.airTimeBenefits}
+                                            activationFlow={this.props.activationFlow}
+                                            serviceOrderCall={this.props.serviceOrderCall}
+                                            createAccount={this.props.createAccount}
+                                            fbUserDetails={this.props.fbUserDetails}
+                                            recaptchaToken={this.props.recaptchaToken}
+                                            disableCaptcha={this.props.disableCaptcha}
+                                            facebookLogin={() => this.props.facebookLogin(true)}
+                                            componentVersion={this.props.componentVersion}
+                                            twoFAInfoLink={this.props.twoFAInfoLink}/>:null}
+                            		{this.props.transactionType===constantValues.CART_TRANSACTION_TYPE_CHECK_BALANCE?
+                        				<OtpLogin
+                                            scriptingJson={this.props.scriptingJson}
+                                            transactionType={this.props.transactionType}
+                                            whatIsThisLinkText={this.props.whatIsThisLinkText}
+                                            checkBalanceTitle={this.props.checkBalanceTitle}
+                                            whatIsThisLinkModalContent={this.props.whatIsThisLinkModalContent}
+                                            loginLearnMoreLinkModalContent={this.props.loginLearnMoreLinkModalContent}
+                                            hideVerificationCodeField={this.props.hideVerificationCodeField}
+                                            isVerificationCodeSent={this.props.isVerificationCodeSent}
+                                            isVerificationCodeValidated={this.props.isVerificationCodeValidated}
+                                            otpLoginFormInfo={this.props.otpLoginFormInfo}
+                                            sendVerificationCodeData={this.props.sendVerificationCodeData}
+                                            validateVerificationCodeErrorMessage={this.props.validateVerificationCodeErrorMessage}
+                                            otpLoginStep1={this.props.otpLoginStep1}
+                                            otpLoginStep2={this.props.otpLoginStep2}
+                                            componentVersion={this.props.componentVersion}
+                                            onInitFormDetailUpdateInStore={this.props.onInitFormDetailUpdateInStore}/>:null}
+                                </div>
+                            </div>
+                        </div>
+                    </div> 
+            </React.Fragment>
+        )
+    }
+}
+
+UserLogin.propTypes = {
+    headlineLogin: PropTypes.string,
+    checkBalanceTitle: PropTypes.string,
+    whatIsThisLinkText: PropTypes.string,
+    whatIsThisLinkModalContent: PropTypes.string,
+    loginLearnMoreLinkText: PropTypes.string,
+    loginLearnMoreLinkModalContent: PropTypes.string,
+    loginTab1: PropTypes.string,
+    loginTab2: PropTypes.string,
+    sendVerificationCodeErrorMessage: PropTypes.string,
+    validateVerificationCodeErrorMessage: PropTypes.string,
+    sendVerificationCodeData: PropTypes.object,
+    validateVerificationCodeData: PropTypes.object,
+    hideVerificationCodeField: PropTypes.bool,
+    userAuthentication: PropTypes.object,
+    emailLoginErrorMessage: PropTypes.string,
+    emailLoginData: PropTypes.object,
+    otpLoginStep1: PropTypes.func,
+    otpLoginStep2: PropTypes.func,
+    emailLogin: PropTypes.func,
+    checkoutPagePath: PropTypes.string,
+    scriptingJson: PropTypes.object,
+    ageConsent:PropTypes.string,
+    authLandingPageHeading: PropTypes.string,
+    facebookLogin: PropTypes.func,
+    recaptchaToken: PropTypes.string,
+    disableCaptcha: PropTypes.string,
+    updateDetailsInMyAccountStore: PropTypes.func
+};
+
+export default UserLogin;
