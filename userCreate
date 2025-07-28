@@ -153,7 +153,6 @@ class UserCreateAccount extends Component {
      * It should return an object to update the state, or null to update nothing.
      * This method is used here because the state depends on changes in scriptingJson prop over time.
      */
-
     registerAccountHandler = (data, guestAccount, isAddressNotEntered) => {
         let email = null, password = null, firstName = null, lastName = null, securityPin = null, securityPin1 = null, rememberMe = null, customerObject = null, esn = null, zipCode = null, webObjId = null;
         if (window.checkIsForgeRockEnabled()) {
@@ -168,7 +167,7 @@ class UserCreateAccount extends Component {
                 this.setState({ frLastName: data?.lastName });
             }
         } else {
-            if (this.state.showRememberMe && !_.isEmpty(this.createAccountRememberMeRef.current.value)) {
+            if (this.state.showRememberMe && !_.isEmpty(this.createAccountRememberMeRef?.current?.value)) {
                 rememberMe = this.createAccountRememberMeRef.current.checked;
             }
             if (!_.isUndefined(this.props.createAccountFormInfo) && !_.isUndefined(this.props.createAccountFormInfo["emailAddress"]) && !_.isUndefined(this.props.createAccountFormInfo["password"]) && !_.isUndefined(this.props.createAccountFormInfo["securityPin"])) {
@@ -230,8 +229,21 @@ class UserCreateAccount extends Component {
                     ..._customerObject,
                     "firstName": this.state.frFirstName,
                     "lastName": this.state.frLastName,
-                    "birthDate": this.state.formattedBirthdate,
-                    "pronoun": this.state.pronoun,
+                    "birthDate": this.state?.formattedBirthdate || '',
+                    "pronoun": this.state?.pronoun || '',
+                }
+                if(this.props.shippingInfo?.phoneNumber?.value){
+                    _customerObject = {
+                        ..._customerObject,
+                        "contactMedium": [
+                            {
+                                "mediumType": "telephoneNumber",
+                                "contactDetails": {
+                                    "phoneNumber": this.props.shippingInfo?.phoneNumber?.value
+                                }
+                            }
+                        ],
+                    }
                 }
             }
             else {
@@ -245,6 +257,19 @@ class UserCreateAccount extends Component {
                         "lastName": lastName,
                         "birthDate": this.state.formattedBirthdate,
                         "pronoun": this.state.pronoun,
+                    }
+                    if(this.props.shippingInfo?.phoneNumber?.value){
+                        _customerObject = {
+                            ..._customerObject,
+                            "contactMedium": [
+                                {
+                                    "mediumType": "telephoneNumber",
+                                    "contactDetails": {
+                                        "phoneNumber": this.props.shippingInfo?.phoneNumber?.value
+                                    }
+                                }
+                            ],
+                        }
                     }
                 }
             }
@@ -365,83 +390,55 @@ class UserCreateAccount extends Component {
     };
 
     isAdditionalInfoProvided = () => {
-
         const {
-
             birthDate = '',
-
             pronoun = '',
-
             birthDateValid
-
         } = this.state || {};
 
         const shippingInfo = this.props?.shippingInfo || {};
-
         const shippingAddress = this.props?.shippingAddressInfo || {};
-
         const phoneNumber = shippingInfo?.phoneNumber || {};
-
         const phoneEntered = !!phoneNumber.value;
-
         const phoneValid = phoneNumber.isValid;
-
         const birthDateValue = birthDate.trim();
-
         const pronounValue = pronoun.trim();
 
         const getField = (field) => shippingAddress?.[field]?.value?.trim() || '';
-
         const isValid = (field) => shippingAddress?.[field]?.isValid === true;
 
         const addressLine1 = getField('addressLine1');
-
         const city = getField('city');
-
         const state = getField('stateOrProvince');
-
         const zip = getField('zipCode');
 
         const isAnyAddressEntered = !!(addressLine1 || city || state || zip);
 
-        // ✅ Case 1: No info entered
-
+        // Case 1: No info entered
         if (!phoneEntered && !birthDateValue && !pronounValue && !isAnyAddressEntered) {
-
             return true; // Allow continue if everything is empty
-
         }
 
-        // ❌ Case 2: Phone or birthdate is entered but invalid
+        //  Case 2: Phone or birthdate is entered but invalid
 
         if ((phoneEntered && !phoneValid) || (birthDateValue && !birthDateValid)) {
-
             return false;
-
         }
 
-        // ❌ Case 3: If any address field is filled, all must be filled AND valid
+        //  Case 3: If any address field is filled, all must be filled AND valid
 
         if (isAnyAddressEntered) {
-
             const areAllAddressFieldsEntered = addressLine1 && city && state && zip;
 
             const areAllAddressFieldsValid =
-
                 isValid('addressLine1') &&
-
                 isValid('city') &&
-
                 isValid('stateOrProvince') &&
-
                 isValid('zipCode');
 
             if (!areAllAddressFieldsEntered || !areAllAddressFieldsValid) {
-
                 return false;
-
             }
-
         }
 
         return true; // All good
@@ -833,6 +830,9 @@ class UserCreateAccount extends Component {
                 this.registerAccountHandler();
             }
         }
+        // if (this.props.createAccountErrorMessage && this.props.createAccountErrorMessage === '10402') {
+        //     this.setState({ showMoreDetails: false })
+        // }
     }
 
     /**
@@ -1233,7 +1233,6 @@ class UserCreateAccount extends Component {
             birthDate,
 
         } = this.state;
-        const Pronouns = [SHE_HER, HE_HIM, THEY_THEM, LBL_OTHER];
 
         return (<div>
             <React.Fragment>
@@ -1319,7 +1318,7 @@ class UserCreateAccount extends Component {
                                                         data-gtm-placement="checkout_login"
                                                         data-gtm-cta="create_account_continue"
                                                         aria-label="continue"
-                                                        style={{marginBottom:'1%'}}
+                                                        style={{ marginBottom: '1%' }}
                                                         onClick={this.handleButtonClick}
                                                     >
                                                         {this.props.scriptingJson[constantValues._BTN_CONTINUE]}
@@ -1477,7 +1476,7 @@ class UserCreateAccount extends Component {
                                                     "city": this.props?.shippingAddressInfo?.city?.value || '',
                                                     "stateOrProvince": this.props?.shippingAddressInfo?.stateOrProvince?.value || "",
                                                     "zipCode": this.props?.shippingAddressInfo?.zipCode?.value || "",
-                                                    "phoneNumber": this.props?.shippingInfo.phoneNumber?.value || "",
+                                                    "phoneNumber": this.props?.shippingInfo?.phoneNumber?.value || "",
                                                     "country": this.props?.shippingAddressInfo?.country?.value || ""
                                                 }}
                                                 validatedAddressVerifyLevel={this.props.validatedAddressVerifyLevel}
@@ -1788,6 +1787,8 @@ const mapStateToProps = state => {
         validRealEmailCheck: state.authDetail.validRealEmailCheck,
         verifyEmailAccountData: state.authDetail.verifyEmailAccountData,
         showAccountReady: state.authDetail.showAccountReady,
+        createAccountErrorMessage: state.authDetail.createAccountErrorMessage,
+        createAccountData: state.authDetail.createAccountData,
         validatedFormName: state.checkoutDetail.validatedFormName,
         validatedFormName: state.checkoutDetail.validatedFormName,
         validatedAddressVerifyLevel: state.checkoutDetail.validatedAddressVerifyLevel,
