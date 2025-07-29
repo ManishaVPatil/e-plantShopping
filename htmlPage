@@ -1,28 +1,15 @@
-const firstNameInputHandler = (e, data) => {
+const lastNameInputHandler = async (e, i) => {
     const { value } = e.target;
     const isCursorMovedOut = e.type === "blur";
-    const isOnlyAlphabet = /^[A-Za-z\s]+$/.test(value); // alphabets and spaces only
-    if (isCursorMovedOut) {
-      if (_.isEmpty(value)) {
-        setFirstNameStatus("error");
-        setFirstNameValidationMessage(
-          props.scriptingJson[constantValues._ERR_MANDATORY_FIRST_NAME]
-        );
-      } else if (!isOnlyAlphabet) {
-        setFirstNameStatus("error");
-        setFirstNameValidationMessage(props.scriptingJson[constantValues._ERR_INVALID_FIRST_NAME]);
-      } else if (value.length > 128) {
-        setFirstNameStatus("error");
-        setFirstNameValidationMessage(props.scriptingJson[constantValues._ERR_LIMIT_EXCEED_FIRST_NAME]);
-      } else {
-        setFirstNameValidationMessage('');
-        setFirstNameStatus("positive");
-        setFirstName(value);
-      }
-    } else {
-      // while typing, restrict value to 128 characters and allow setting it
-      if (value.length <= 128) {
-        setFirstName(value);
-      }
+    if (isCursorMovedOut && _.isEmpty(value)) {
+      setLastNameStatus("error");
+      setLastNameValidationMessage(
+        props.scriptingJson[constantValues._ERR_MANDATORY_LAST_NAME]
+      );
     }
-   };
+    else {
+      setLastNameValidationMessage('');
+      setLastNameStatus("");
+      setLastName(value);
+    }
+  };
