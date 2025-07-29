@@ -1,3 +1,61 @@
-isValid: (!_.isEmpty(props.shippingInfo) && !_.isEmpty(props.shippingInfo["zipCode"]) && !_.isEmpty(props.shippingInfo["zipCode"].value)) || !_.isEmpty(authDetailDataUtil.getCookie("location")) ? true : false,
+zip_city: {
+                    fieldFormat: 'multiple',
+                    fieldType: 'textbox',
+                    zipCode: {
+                        elementType: 'input',
+                        elementConfig: {
+                            type: 'text',
+                            onKeyPress: (event) => { return (event.charCode > 47 && event.charCode < 58) ? true : event.preventDefault() },
+                            id: 'customerZip',
+                            name: 'Customer Zip',
+                            className: 'form-control',
+                            autoComplete: "off",
+                            "aria-required": "true",
+                            'aria-describedby': 'zipCodeShippingInfoerror'
+                        },
+                        value: !_.isEmpty(props.shippingInfo) && !_.isEmpty(props.shippingInfo["zipCode"]) && !_.isEmpty(props.shippingInfo["zipCode"].value) ? props.shippingInfo["zipCode"].value : props?.isTracfone ? null : authDetailDataUtil.getCookie("location"),
+                        label: props.scriptingJson[constantValues._LBL_FORM_ZIP],
+                        validation: {
+                            required: true,
+                            maxLength: 5,
+                            minLength: 5
+                        },
+                        errorDescriptions: {
+                            isMandatoryError: props.scriptingJson[constantValues._ERR_MANDATORY_ZIP],
+                            isLimitExceedError: props.scriptingJson[constantValues._ERR_LIMIT_EXCEED_ZIP],
+                            isLimitShortError: _LBL_FORM_ZIP_ERROR_MINIMIUM_DIGIT
+                        },
+                        isFirstField: true,
+                        isCheckoutShippingZip: true,
+                        isValid: (!_.isEmpty(props.shippingInfo) && !_.isEmpty(props.shippingInfo["zipCode"]) && !_.isEmpty(props.shippingInfo["zipCode"].value)) || !_.isEmpty(authDetailDataUtil.getCookie("location")) ? true : false,
                         touched: (!_.isEmpty(props.shippingInfo) && !_.isEmpty(props.shippingInfo["zipCode"]) && !_.isEmpty(props.shippingInfo["zipCode"].value)) || !_.isEmpty(authDetailDataUtil.getCookie("location")) ? true : false,
-                        
+                        isZipField: true,
+                        ariaRequiredDescription: props.scriptingJson[constantValues._LBL_CHECKOUT_ZIP_ARIA_DESC]
+                    },
+                    city: {
+                        elementType: 'input',
+                        elementConfig: {
+                            type: 'text',
+                            id: 'customerCity',
+                            name: 'Customer City',
+                            className: 'form-control',
+                            autoComplete: "off",
+                            "aria-required": "true",
+                            'aria-describedby': 'cityShippingInfoerror'
+                        },
+                        value: !_.isEmpty(props.shippingInfo) && props.shippingInfo["city"] ? props.shippingInfo["city"].value : '',
+                        label: _LBL_FORM_CITY_WITHOUT_ASTRIK,
+                        validation: {
+                            required: true,
+                            maxLength: 30,
+                            isAlphabetical: false
+                        },
+                        errorDescriptions: {
+                            isMandatoryError: props.scriptingJson[constantValues._ERR_MANDATORY_CITY],
+                            isLimitExceedError: props.scriptingJson[constantValues._ERR_LIMIT_EXCEED_CITY]
+                        },
+                        isCityField: true,
+                        isValid: !_.isEmpty(props.shippingInfo) && !_.isEmpty(props.shippingInfo["city"]) && !_.isEmpty(props.shippingInfo["city"].value) ? true : false,
+                        touched: !_.isEmpty(props.shippingInfo) && !_.isEmpty(props.shippingInfo["city"]) && !_.isEmpty(props.shippingInfo["city"].value) ? true : false
+                    }
+                }
