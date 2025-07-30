@@ -1,15 +1,41 @@
-const lastNameInputHandler = async (e, i) => {
-    const { value } = e.target;
-    const isCursorMovedOut = e.type === "blur";
-    if (isCursorMovedOut && _.isEmpty(value)) {
-      setLastNameStatus("error");
-      setLastNameValidationMessage(
-        props.scriptingJson[constantValues._ERR_MANDATORY_LAST_NAME]
-      );
-    }
-    else {
-      setLastNameValidationMessage('');
-      setLastNameStatus("");
-      setLastName(value);
+ // to enable/disable the button
+  const buttonEnable = (isBtnDisable) => {
+    let enableVal;
+    // Validate first & last name only if props.createAccountFields is true
+    const isFirstLastNameValid = props.createAccountFields &&
+      ( firstNamevalidationMessage?.trim() !== "" || lastNamevalidationMessage?.trim() !== ""
+      || firstName?.trim()!==""||lastName?.trim()!=='');
+console.log("isFirstLastNameValid",isFirstLastNameValid)
+    if (isBtnDisable) {
+      if (confirmPswrdVal && confirmPasswrordvalidationMessage) {
+        enableVal = emailVal?.trim() !== "" &&
+        pswrdVal?.trim() !== "" &&
+        confirmPswrdVal?.trim() !== "" &&
+        pinVal?.trim() !== "" &&
+        emailvalidationMessage?.trim() === "" &&
+        passwrordvalidationMessage?.trim() === "" &&
+        confirmPasswrordvalidationMessage?.trim() === "" &&
+        pinvalidationMessage?.trim() === "" &&
+        pswrdVal?.trim().length >= 8 &&
+        (isCaptchaValid || props.scriptingJson[constantValues.LBL_REGRESSION_ENABLE_VERIFY] == constantValues.REGRESSION_ENABLE_VERIFY_VALUE) &&
+        isAgeChecked && isFirstLastNameValid
+        setButtonEnable(enableVal)
+        return enableVal;
+      } else {
+        enableVal = emailVal?.trim() !== "" &&
+        pswrdVal?.trim() !== "" &&
+        pinVal?.trim() !== "" &&
+        emailvalidationMessage?.trim() === "" &&
+        passwrordvalidationMessage?.trim() === "" &&
+        pinvalidationMessage?.trim() === "" &&
+        pswrdVal?.trim().length >= 8 &&
+        (isCaptchaValid || props.scriptingJson[constantValues.LBL_REGRESSION_ENABLE_VERIFY] == constantValues.REGRESSION_ENABLE_VERIFY_VALUE) &&
+        isAgeChecked && isFirstLastNameValid;
+        setButtonEnable(enableVal);
+        return enableVal;
+      }
+    } else {
+      setButtonEnable(true);
+      return true;
     }
   };
