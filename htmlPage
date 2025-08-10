@@ -1,41 +1,335 @@
- // to enable/disable the button
-  const buttonEnable = (isBtnDisable) => {
-    let enableVal;
-    // Validate first & last name only if props.createAccountFields is true
-    const isFirstLastNameValid = props.createAccountFields &&
-      ( firstNamevalidationMessage?.trim() !== "" || lastNamevalidationMessage?.trim() !== ""
-      || firstName?.trim()!==""||lastName?.trim()!=='');
-console.log("isFirstLastNameValid",isFirstLastNameValid)
-    if (isBtnDisable) {
-      if (confirmPswrdVal && confirmPasswrordvalidationMessage) {
-        enableVal = emailVal?.trim() !== "" &&
-        pswrdVal?.trim() !== "" &&
-        confirmPswrdVal?.trim() !== "" &&
-        pinVal?.trim() !== "" &&
-        emailvalidationMessage?.trim() === "" &&
-        passwrordvalidationMessage?.trim() === "" &&
-        confirmPasswrordvalidationMessage?.trim() === "" &&
-        pinvalidationMessage?.trim() === "" &&
-        pswrdVal?.trim().length >= 8 &&
-        (isCaptchaValid || props.scriptingJson[constantValues.LBL_REGRESSION_ENABLE_VERIFY] == constantValues.REGRESSION_ENABLE_VERIFY_VALUE) &&
-        isAgeChecked && isFirstLastNameValid
-        setButtonEnable(enableVal)
-        return enableVal;
-      } else {
-        enableVal = emailVal?.trim() !== "" &&
-        pswrdVal?.trim() !== "" &&
-        pinVal?.trim() !== "" &&
-        emailvalidationMessage?.trim() === "" &&
-        passwrordvalidationMessage?.trim() === "" &&
-        pinvalidationMessage?.trim() === "" &&
-        pswrdVal?.trim().length >= 8 &&
-        (isCaptchaValid || props.scriptingJson[constantValues.LBL_REGRESSION_ENABLE_VERIFY] == constantValues.REGRESSION_ENABLE_VERIFY_VALUE) &&
-        isAgeChecked && isFirstLastNameValid;
-        setButtonEnable(enableVal);
-        return enableVal;
-      }
-    } else {
-      setButtonEnable(true);
-      return true;
+import React, { Component } from 'react';
+import PropTypes from 'prop-types';
+import _ from 'underscore';
+import MoreInfoInspicioAddressForm from '../UI/Forms/Forms';
+import * as constantValues from '../../store/constants/config';
+import * as actions from "../../store/actions/index";
+import * as authDetailDataUtil from '../../utils/AuthDetailDataUtil/AuthDetailDataUtil';
+import * as checkoutDetailDataUtil from '../../utils/CheckoutDetailDataUtil/CheckoutDetailDataUtil';
+import { getStateListFromCountryStateMapping } from '../../utils/MyAccountDataUtil/MyAccountDataUtil';
+import { connect } from "react-redux";
+import AddressValidationModal from '../CheckoutDetail/CheckoutProcess/AddressValidationModal/AddressValidationModal';
+import Backdrop from '../UI/Backdrop/Backdrop';
+import {
+    LBL_PROFILE_ADDRESS,
+    _LBL_FORM_ZIP_WITHOUT_ASTRIK,
+    _LBL_FORM_CITY_WITHOUT_ASTRIK,
+    _LBL_FORM_STATE_WITHOUT_ASTRIK,
+    _LBL_FORM_ZIP_ERROR_MINIMIUM_DIGIT,
+    LBL_SELECT_LINE,
+    LBL_SELECT_LINE_ACCOUNT,
+    LBL_COUNTRY
+} from '../../store/constants/config';
+class MoreInfoAddressDetails extends Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            isValueAvailable: false,
+            formDefinition: null,
+            formIsValid: false,
+            updateFormState: false,
+            address: "",
+            country: "",
+            zipCode: "",
+            city: "",
+            stateOrProvince: "",
+        };
     }
-  };
+
+
+
+    /* This method is invoked right before calling the render method.
+     * It should return an object to update the state, or null to update nothing.
+     * This method is used here because the state depends on changes in scriptingJson prop over time.
+     */
+    static getDerivedStateFromProps(props) {
+
+        const usaStatesList = getStateListFromCountryStateMapping(props.scriptingJson?.countryStateMapping, "US");
+        return {
+            formDefinition: {
+                addressLine1: {
+                    fieldFormat: 'single',
+                    fieldType: 'textbox',
+                    elementType: 'input',
+                    elementConfig: {
+                        type: 'text',
+                        id: 'customerAddress',
+                        name: 'Customer Address',
+                        className: 'form-control',
+                        autoComplete: "off",
+                        "aria-required": "true",
+                        'aria-describedby': 'addressLine1ShippingInfoerror',
+                        maxLength: !_.isEmpty(props.scriptingJson[constantValues._SHIPPING_ADDRESS_ONE_LENGTH]) ? props.scriptingJson[constantValues._SHIPPING_ADDRESS_ONE_LENGTH] : "30",
+                        'aria-label': `${props.scriptingJson[constantValues._LBL_ENTER]} ${props.scriptingJson[constantValues._LBL_ADDRESS]}`
+                    },
+                    value: !_.isEmpty(props.shippingInfo) && props.shippingInfo["addressLine1"] ? props.shippingInfo["addressLine1"].value : '',
+                    label: props.scriptingJson[constantValues.LBL_PROFILE_ADDRESS_ACCOUNT] ? props.scriptingJson[constantValues.LBL_PROFILE_ADDRESS_ACCOUNT] : LBL_PROFILE_ADDRESS,
+                    validation: {
+                        required: true,
+                        maxLength: !_.isEmpty(props.scriptingJson[constantValues._SHIPPING_ADDRESS_ONE_LENGTH]) ? props.scriptingJson[constantValues._SHIPPING_ADDRESS_ONE_LENGTH] : 30,
+                        isAlphabetical: false
+                    },
+                    errorDescriptions: {
+                        isMandatoryError: props.scriptingJson[constantValues._ERR_MANDATORY_ADDRESS],
+                        isLimitExceedError: props.scriptingJson[constantValues._ERR_LIMIT_EXCEED_ADDRESS]
+                    },
+                    isValid: !_.isEmpty(props.shippingInfo) && !_.isEmpty(props.shippingInfo["addressLine1"]) && !_.isEmpty(props.shippingInfo["addressLine1"].value) ? true : false,
+                    touched: !_.isEmpty(props.shippingInfo) && !_.isEmpty(props.shippingInfo["addressLine1"]) && !_.isEmpty(props.shippingInfo["addressLine1"].value) ? true : false
+                },
+                addressLine2: {
+                    fieldFormat: 'single',
+                    fieldType: 'textbox',
+                    elementType: 'input',
+                    elementConfig: {
+                        type: 'text',
+                        id: 'customerAdd2',
+                        name: 'Customer Address 2',
+                        className: 'form-control',
+                        autoComplete: "off",
+                        'aria-describedby': 'Apt, Suite, Unit, Floor (Optional)',
+                        maxLength: !_.isEmpty(props.scriptingJson[constantValues._SHIPPING_ADDRESS_TWO_LENGTH]) ? props.scriptingJson[constantValues._SHIPPING_ADDRESS_TWO_LENGTH] : "25",
+                        'aria-label': `${props.scriptingJson[constantValues._LBL_ENTER]} ${props.scriptingJson[constantValues._LBL_APT_UNIT_FLOOR]}`
+                    },
+                    value: !_.isEmpty(props.shippingInfo) && !_.isEmpty(props.shippingInfo["addressLine2"]) && !_.isEmpty(props.shippingInfo["addressLine2"].value) ? props.shippingInfo["addressLine2"].value : '',
+                    label: props.scriptingJson[constantValues._LBL_FORM_APT_SUITE_UNIT_FLOOR],
+                    validation: {
+                        required: false,
+                        maxLength: !_.isEmpty(props.scriptingJson[constantValues._SHIPPING_ADDRESS_TWO_LENGTH]) ? props.scriptingJson[constantValues._SHIPPING_ADDRESS_TWO_LENGTH] : 25,
+                        isAlphabetical: false
+                    },
+                    isValid: true,
+                    touched: !_.isEmpty(props.shippingInfo) && !_.isEmpty(props.shippingInfo["addressLine2"]) && !_.isEmpty(props.shippingInfo["addressLine2"].value) ? true : false
+                },
+                country: {
+                    fieldFormat: 'single',
+                    fieldType: 'textbox',
+                    elementType: 'input',
+                    elementConfig: {
+                        type: 'text',
+                        id: 'customerCountry',
+                        name: 'Customer Country',
+                        className: "form-control",
+                        autoComplete: "off",
+                        'aria-readonly': "true",
+                        'aria-describedby': "Country",
+                        'aria-label': `${props.scriptingJson[constantValues._LBL_ENTER]} ${props.scriptingJson[constantValues._LBL_FORM_COUNTRY]}`
+                    },
+                    value: 'US',
+                    displayValue: 'USA',
+                    label: /TRACFONE|TOTAL_WIRELESS/i.test(props.scriptingJson[constantValues.API_BRAND_NAME]) ? (props.scriptingJson[constantValues.LBL_COUNTRY_ACCOUNT] ? props.scriptingJson[constantValues.LBL_COUNTRY_ACCOUNT] : LBL_COUNTRY) : "",
+                    validation: {
+                        required: true
+                    },
+                    isValid: true,
+                    isDisabled: true,
+                    touched: false,
+                    isCountryField: true
+                },
+                zip_city: {
+                    fieldFormat: 'multiple',
+                    fieldType: 'textbox',
+                    zipCode: {
+                        elementType: 'input',
+                        elementConfig: {
+                            type: 'text',
+                            onKeyPress: (event) => { return (event.charCode > 47 && event.charCode < 58) ? true : event.preventDefault() },
+                            id: 'customerZip',
+                            name: 'Customer Zip',
+                            className: 'form-control',
+                            autoComplete: "off",
+                            "aria-required": "true",
+                            'aria-describedby': 'ZipCode',
+                            'aria-label': `${props.scriptingJson[constantValues._LBL_ENTER]} ${props.scriptingJson[constantValues._LBL_ZIP_CODE]}`
+                        },
+                        value: !_.isEmpty(props.shippingInfo) && !_.isEmpty(props.shippingInfo["zipCode"]) && !_.isEmpty(props.shippingInfo["zipCode"].value) ? props.shippingInfo["zipCode"].value : props?.isTracfone ? null : authDetailDataUtil.getCookie("location"),
+                        label: props.scriptingJson[constantValues._LBL_FORM_ZIP],
+                        validation: {
+                            required: true,
+                            maxLength: 5,
+                            minLength: 5,
+                            isAddressReq: props?.isTracfone ? true: false
+                        },
+                        errorDescriptions: {
+                            isMandatoryError: props.scriptingJson[constantValues._ERR_MANDATORY_ZIP],
+                            isLimitExceedError: props.scriptingJson[constantValues._ERR_LIMIT_EXCEED_ZIP],
+                            isLimitShortError: props.scriptingJson[constantValues._LBL_FORM_ZIP_ERROR_MINIMIUM_DIGIT_ACCOUNT] ? props.scriptingJson[constantValues._LBL_FORM_ZIP_ERROR_MINIMIUM_DIGIT_ACCOUNT] : _LBL_FORM_ZIP_ERROR_MINIMIUM_DIGIT
+                        },
+                        isFirstField: true,
+                        isCheckoutShippingZip: true,
+                        isValid: (!_.isEmpty(props.shippingInfo) && !_.isEmpty(props.shippingInfo["zipCode"]) && !_.isEmpty(props.shippingInfo["zipCode"].value)) || (!props?.isTracfone && !_.isEmpty(authDetailDataUtil.getCookie("location"))) ? true : false,
+                        touched: (!_.isEmpty(props.shippingInfo) && !_.isEmpty(props.shippingInfo["zipCode"]) && !_.isEmpty(props.shippingInfo["zipCode"].value)) || (!props?.isTracfone && !_.isEmpty(authDetailDataUtil.getCookie("location"))) ? true : false,
+                        isZipField: true,
+                        ariaRequiredDescription: props.scriptingJson[constantValues._LBL_CHECKOUT_ZIP_ARIA_DESC]
+                    },
+                    city: {
+                        elementType: 'input',
+                        elementConfig: {
+                            type: 'text',
+                            id: 'customerCity',
+                            name: 'Customer City',
+                            className: 'form-control',
+                            autoComplete: "off",
+                            "aria-required": "true",
+                            'aria-describedby': 'City',
+                            'aria-label': `${props.scriptingJson[constantValues._LBL_ENTER]} ${props.scriptingJson[constantValues._LBL_FORM_CITY]}`
+                        },
+                        value: !_.isEmpty(props.shippingInfo) && props.shippingInfo["city"] ? props.shippingInfo["city"].value : '',
+                        label: props.scriptingJson[constantValues._LBL_FORM_CITY_WITHOUT_ASTRIK_ACCOUNT] ? props.scriptingJson[constantValues._LBL_FORM_CITY_WITHOUT_ASTRIK_ACCOUNT] : _LBL_FORM_CITY_WITHOUT_ASTRIK,
+                        validation: {
+                            required: true,
+                            maxLength: 30,
+                            isAlphabetical: false
+                        },
+                        errorDescriptions: {
+                            isMandatoryError: props.scriptingJson[constantValues._ERR_MANDATORY_CITY],
+                            isLimitExceedError: props.scriptingJson[constantValues._ERR_LIMIT_EXCEED_CITY]
+                        },
+                        isCityField: true,
+                        isValid: !_.isEmpty(props.shippingInfo) && !_.isEmpty(props.shippingInfo["city"]) && !_.isEmpty(props.shippingInfo["city"].value) ? true : false,
+                        touched: !_.isEmpty(props.shippingInfo) && !_.isEmpty(props.shippingInfo["city"]) && !_.isEmpty(props.shippingInfo["city"].value) ? true : false
+                    }
+                },
+                stateOrProvince: {
+                    fieldFormat: 'single',
+                    id: "shippingStateOrProvince",
+                    fieldType: 'dropdown',
+                    elementType: 'li',
+                    elementConfig: {
+                        className: 'option',
+                        tabIndex: constantValues.TAB_INDEX_MINUS_ONE
+                    },
+                    options: usaStatesList,
+                    validation: {
+                        required: true
+                    },
+                    errorDescriptions: {
+                        isMandatoryError: props.scriptingJson[constantValues._ERR_MANDATORY_STATE]
+                    },
+                    isStateField: true,
+                    isTFLRP: props?.isTracfone ? true:false,
+                    accessible: /TRACFONE|TOTAL_WIRELESS/i.test(props.scriptingJson[constantValues.API_BRAND_NAME]),
+                    displayValue: !_.isEmpty(props.shippingInfo) && props.shippingInfo["stateOrProvince"] ? checkoutDetailDataUtil.getDisplayNameAndValue(props.shippingInfo["stateOrProvince"].value, usaStatesList, "value", "displayValue") : '',
+                    value: !_.isEmpty(props.shippingInfo) && props.shippingInfo["stateOrProvince"] ? props.shippingInfo["stateOrProvince"].value : '',
+                    label: props.scriptingJson[constantValues._LBL_FORM_STATE_WITHOUT_ASTRIK_ACCOUNT] ? props.scriptingJson[constantValues._LBL_FORM_STATE_WITHOUT_ASTRIK_ACCOUNT] : _LBL_FORM_STATE_WITHOUT_ASTRIK,
+                    isValid: !_.isEmpty(props.shippingInfo) && !_.isEmpty(props.shippingInfo["stateOrProvince"]) && !_.isEmpty(props.shippingInfo["stateOrProvince"].value) ? true : false,
+                    label2: props.scriptingJson[constantValues.LBL_SELECT_LINE_ACCOUNT] ? props.scriptingJson[constantValues.LBL_SELECT_LINE_ACCOUNT] : LBL_SELECT_LINE
+                },
+            },
+            formIsValid: false,
+            formType: constantValues.FORM_TYPE_SAVED_SHIPPING_ADDRESS
+        }
+    }
+    /* This function is used to let React know if a component’s output is not affected by the current change in state or props
+     * This method is invoked before rendering when new props or state are being received 
+     */
+
+    render() {
+        /*get details for shipping review screen */
+        const shippingReviewDetail = checkoutDetailDataUtil.getContactDetailForReview(this.props.shippingInfo, this.props.primaryShippingAddressData, this.props.selectedAddressDetail, this.props.editShippingModalInfo, checkoutDetailDataUtil.getShippingInfoFormData(this.props.shippingReviewData));
+        /* determine visibility status for address validation modal */
+        const displayAddressValidationModal = !_.isEmpty(this.props.validatedAddressData) && !_.isEmpty(this.props.validatedAddressVerifyLevel) && this.props.validatedAddressVerifyLevel !== constantValues.ADDRESS_VERIFICATION_VERIFIED && !this.props.isShippingReview && (this.props.validatedFormName === constantValues.FORM_TYPE_SHIPPING_INFO || this.props.validatedFormName === constantValues.FORM_TYPE_EDIT_SHIPPING_INFO);
+        /* reset the validatedAddressVerifyLevel when review mode */
+        if (this.props.isShippingReview && (this.props.validatedFormName === constantValues.FORM_TYPE_SHIPPING_INFO || this.props.validatedFormName === constantValues.FORM_TYPE_EDIT_SHIPPING_INFO)) {
+            this.props.updateDataInStoreHandler(null, "validatedAddressVerifyLevel", false);
+            /* fetch cart detail as per the provided shipping zip code */
+            if (shippingReviewDetail["zipCode"] !== localStorage.getItem("shippingZipCode")) {
+                localStorage.setItem("shippingZipCode", shippingReviewDetail["zipCode"]);
+                this.props.getCartDetailsHandler(shippingReviewDetail["zipCode"], true);
+            }
+        }
+        /* Update shipping address when the address validation API verify level is verified  */
+        if (!this.props.isShippingReview && this.props.validatedAddressVerifyLevel === constantValues.ADDRESS_VERIFICATION_VERIFIED && (this.props.validatedFormName === constantValues.FORM_TYPE_SHIPPING_INFO || this.props.validatedFormName === constantValues.FORM_TYPE_EDIT_SHIPPING_INFO)) {
+            this.useSuggestedAddressSelectionHandler();
+        }
+
+        return (
+            <React.Fragment>
+                {!this.props.isLoggedIn ?
+                    <div>
+                        {/\b(v1)\b/i.test(this.props.componentVersion) ?
+                            <h2 className="heading-four">{this.props.scriptingJson[constantValues._LBL_SHIPPING_INFO]}</h2> : null}
+                        {/\b(v2)\b/i.test(this.props.componentVersion) ?
+                            <h2 className="heading-four font-weight-bolder">{this.props.scriptingJson[constantValues._LBL_SHIPPING_INFORMATION]}</h2> : null}
+                    </div> : null}
+                <div className="shipping-info-form">
+                    <MoreInfoInspicioAddressForm
+                        state={this.state}
+                        formDefinition={this.state.formDefinition}
+                        updateFormState={this.state.updateFormState}
+                        mapQuestStateName={this.props.mapQuestStateName}
+                        mapQuestCityName={this.props.mapQuestCityName}
+                        mapQuestCountryName={this.props.mapQuestCountryName}
+                        checkCountryUS={"true"}
+                        componentVersion={this.props.componentVersion}
+                        componentClassName={this.props.componentClassName}
+                        scriptingJson={this.props.scriptingJson}
+                        addFormErrorsBtnAccessibility={true}
+                        shippingZipCode={this.props.shippingZipCode}
+                        validateAddress={(addressJson, addressFormName) => this.validateShippingAddress(this.props.shippingZipCode, addressFormName)}
+
+                    />
+                    {displayAddressValidationModal && !_.isEmpty(shippingReviewDetail) ?
+                        <React.Fragment>
+                            <Backdrop show={displayAddressValidationModal} clicked={() => this.props.updateDataInStoreHandler(null, "validatedAddressVerifyLevel", false)} />
+                            <AddressValidationModal
+                                scriptingJson={this.props.scriptingJson}
+                                validatedFormName={this.props.validatedFormName}
+                                validatedAddressData={this.props.validatedAddressData}
+                                unverifiedAddressData={shippingReviewDetail}
+                                transactionType={this.props.transactionType}
+                                editAddressModalInfo={this.props.editShippingModalInfo}
+                                validatedAddressVerifyLevel={this.props.validatedAddressVerifyLevel}
+                                validateAddress={this.props.validateAddress}
+                                componentVersion={this.props.componentVersion}
+                                updateDataInStoreHandler={this.props.updateDataInStoreHandler}
+                                useSuggestedAddressSelectionHandler={() => this.useSuggestedAddressSelectionHandler()}
+                                useUnverifiedAddressSelectionHandler={() => this.useUnverifiedAddressSelectionHandler()}
+                                style={displayAddressValidationModal ? constantValues.MODAL_STYLE : constantValues.MODAL_STYLE_NONE} />
+                        </React.Fragment> : null}
+
+
+
+                </div>
+            </React.Fragment>
+        )
+    }
+}
+MoreInfoAddressDetails.propTypes = {
+    scriptingJson: PropTypes.object,
+    shippingInfo: PropTypes.object,
+    validateAddress: PropTypes.func,
+    componentVersion: PropTypes.string,
+    componentClassName: PropTypes.string,
+    mapQuestStateName: PropTypes.string,
+    mapQuestCityName: PropTypes.string,
+    mapQuestCountryName: PropTypes.string,
+    shippingInfo: PropTypes.object,
+    shippingZipCode: PropTypes.string,
+};
+const mapStateToProps = state => {
+
+    const shippingInfo = checkoutDetailDataUtil.getShippingInfoFormData(state.checkoutDetail.checkoutReview.shippingReviewData);
+    let shippingZipCode = state.checkoutDetail.shippingZipCode;
+    if (_.isEmpty(shippingZipCode) && !_.isEmpty(shippingInfo) && !_.isEmpty(shippingInfo["zipCode"]) && !_.isEmpty(shippingInfo["zipCode"].value)) {
+        shippingZipCode = shippingInfo["zipCode"].value;
+    } else if (_.isEmpty(shippingZipCode)) {
+        shippingZipCode = authDetailDataUtil.getCookie("location");
+    }
+    return {
+        shippingZipCode: shippingZipCode,
+        mapQuestStateName: state.checkoutDetail.mapQuestData.stateName,
+        mapQuestCityName: state.checkoutDetail.mapQuestData.cityName,
+        mapQuestCountryName: state.checkoutDetail.mapQuestData.countryName
+    }
+};
+const mapDispatchToProps = dispatch => {
+    return {
+        onInitUpdateShippingMethod: (cartID, shippingMethodID, zipCode, brandName, sourceSystem, partyID, language, WCToken, wcTrustedToken, shipModeUrl) =>
+            dispatch(actions.updateShippingMethod(cartID, shippingMethodID, zipCode, brandName, sourceSystem, partyID, language, WCToken, wcTrustedToken, shipModeUrl)),
+        onInitUpdateCityStateInStore: (mapQuestApiUrl, formType) =>
+            dispatch(actions.initUpdateCityState(mapQuestApiUrl, formType)),
+        onInitValidateAddress: (validateShippingAddressUrl, authToken, addressFormName, language) =>
+            dispatch(actions.validateAddress(validateShippingAddressUrl, authToken, addressFormName, language)),
+    }
+};
+export default connect(mapStateToProps, mapDispatchToProps)(MoreInfoAddressDetails);
