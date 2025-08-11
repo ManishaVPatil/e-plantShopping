@@ -1,400 +1,333 @@
-
-    /**
-     * This function is executed when focusOut happens after providing value to the HTML form field or onBlur event on the form fields
-     * @param {STRING|JSON} {
-     *      @event contains either the HTML form field target or the entered value
-     *      @elementFieldFormat indicates the type of form field i.e., `single` or `multiple`
-     *      @elementIdentifier indicates the name of the field with which user interacted
-     *      @subElementIdentifier indicates the name of the field with which user interacted in case the field of multiple format
-     * }
-     * @returns {*|NONE} updates the class state formDefinition object
-     **/
-    focusOutValidationHandler = (event, elementFieldFormat, elementIdentifier, subElementIdentifier) => {
-        let enteredValue = _.isString(event) ? event : event.target.value, updatedFormElement = null;
-        let updatedFormDefinition = {
-            ...this.state.formDefinition
-        }
-
-        if ("multiple" === elementFieldFormat) {
-            const updatedFormObjectJson = {
-                ...updatedFormDefinition[elementIdentifier]
-            }
-            updatedFormElement = {
-                ...updatedFormObjectJson[subElementIdentifier]
-            }
-
-            /* fetching and providing the credit card type */
-            if (updatedFormElement.validation.isCreditCard || updatedFormElement.validation.isAcquisitionCreditCard) {
-                const creditCardBrandName = checkoutDetailDataUtil.getCreditCardBrandName(enteredValue);
-                if (!_.isEmpty(creditCardBrandName)) {
-                    this.props.updateCreditCardVendorIconHandler(creditCardBrandName);
-                } else {
-                    this.props.updateCreditCardVendorIconHandler(null);
-                }
-            }
-
-            /*updating the corresponding formElement JSON immutably */
-            if (updatedFormElement.validation) {
-                const validationStatusObj = this.checkFormInputs(enteredValue, updatedFormElement.validation, undefined, updatedFormElement?.elementConfig?.id);
-                updatedFormElement.isValid = validationStatusObj.validity;
-                updatedFormElement.errorType = validationStatusObj.errorType;
-            }
-
-            /* fetch city and state using the zipcode and save in store */
-            if (updatedFormElement.isZipField && updatedFormElement.isValid) {
-                /* update city and state if zip field is valid */
-                const mapQuestApiUrl = this.props.scriptingJson[constantValues.MAP_QUEST_END_POINT_URL] + this.props.scriptingJson[constantValues.MAP_QUEST_API_PATH] + `?key=${this.props.scriptingJson[constantValues.MAP_QUEST_AUTH_TOKEN]}&location=${enteredValue},${this.getCountryIdentifier(updatedFormDefinition)}&outFormat=json&maxResults=1`;
-                this.props.onInitUpdateCityStateInStore(mapQuestApiUrl, this.state.formType);
-            }
-            /* Set touched to false if no value is provided */
-            if (_.isEmpty(updatedFormElement.value)) {
-                updatedFormElement.touched = false;
-            }
-
-            updatedFormObjectJson[subElementIdentifier] = updatedFormElement;
-            updatedFormDefinition[elementIdentifier] = updatedFormObjectJson;
-        } else {
-            updatedFormElement = {
-                ...updatedFormDefinition[elementIdentifier]
-            }
-
-            /* fetching and providing the credit card type */
-            if (updatedFormElement.validation.isCreditCard || updatedFormElement.validation.isAcquisitionCreditCard) {
-                const creditCardBrandName = checkoutDetailDataUtil.getCreditCardBrandName(enteredValue);
-                if (!_.isEmpty(creditCardBrandName)) {
-                    this.props.updateCreditCardVendorIconHandler(creditCardBrandName);
-                } else {
-                    this.props.updateCreditCardVendorIconHandler(null);
-                }
-            }
-
-            /*updating the corresponding formElement JSON immutably */
-            if (updatedFormElement.validation) {
-                const validationStatusObj = this.checkFormInputs(enteredValue, updatedFormElement.validation, undefined, updatedFormElement?.elementConfig?.id);
-                updatedFormElement.isValid = validationStatusObj.validity;
-                updatedFormElement.errorType = validationStatusObj.errorType;
-            }
-
-            /* fetch city and state using the zipcode and save in store */
-            if (updatedFormElement.isZipField && updatedFormElement.isValid) {
-                /* update city and state if zip field is valid */
-                const mapQuestApiUrl = this.props.scriptingJson[constantValues.MAP_QUEST_END_POINT_URL] + this.props.scriptingJson[constantValues.MAP_QUEST_API_PATH] + `?key=${this.props.scriptingJson[constantValues.MAP_QUEST_AUTH_TOKEN]}&location=${enteredValue},${this.getCountryIdentifier(updatedFormDefinition)}&outFormat=json&maxResults=1`;
-                this.props.onInitUpdateCityStateInStore(mapQuestApiUrl, this.state.formType);
-            }
-            /**to add aria live on focus */
-            if (updatedFormElement.live) {
-                updatedFormElement.showAriaLive = true;
-            }
-
-            /* Set touched to false if no value is provided */
-            if (_.isEmpty(updatedFormElement.value)) {
-                updatedFormElement.touched = false;
-            }
-            /* set touched to true for special input fields */
-            if (updatedFormElement.isAlwaysTouched) {
-                updatedFormElement.touched = true;
-            }
-
-            /* check for valid raf code alphanumeric-alphanumeric*/
-            if (updatedFormElement.validation.isRafCode) {
-                let rafCode = updatedFormElement.value;
-                updatedFormElement.isValid = /^[a-z0-9A-Z]{4}-{1}[a-z0-9A-Z]{4}$/.test(rafCode);
-            }
-
-            if(this.props.scriptingJson[constantValues.ENABLE_ACCOUNT_CREATION_VALIDATION] === "true" && updatedFormElement?.elementConfig?.id==="createAccountEmail" && this.state.formType === constantValues.FORM_TYPE_CREATE_ACCOUNT){
-               if(updatedFormElement.errorType==="validRealEmailError"){
-                    updatedFormElement.errorType = null;
-                    updatedFormElement.isValid = true;
-                    updatedFormElement.validation.isValidRealEmail =true;
-                }
-            }
-             // address validation
-             if (elementIdentifier == 'addressLine1' || elementIdentifier == 'addressLine2') {
-                if (!_.isEmpty(enteredValue)) {
-                    const addressDigitsCheckFail = checkoutDetailDataUtil.hasMoreThanRequiredContinuousDigits(!_.isEmpty(enteredValue) ? enteredValue : '', this.props.scriptingJson[constantValues._SHIPPING_ADDRESS_ALLOWED_DIGITS])
-                    if (addressDigitsCheckFail) {
-                        updatedFormElement.isValid = false;
-                        updatedFormElement.errorType = "isDigitLimitExceedError";
-                    }
-                }
-            }
-            updatedFormDefinition[elementIdentifier] = updatedFormElement;
-        }
-
-        /*check the form validity */
-        let formIsValid = this.checkFormValidity(updatedFormDefinition);
-
-        /* store the form detail in redux store when form is successfully validated */
-        this.props.onInitFormDetailUpdateInStore(this.getUpdatedFormFieldValues(updatedFormDefinition), this.state.formType, false);
-
-        /* set the state with updated shipping form details and form validity status */
-        this.setState({
-            formDefinition: updatedFormDefinition,
-            formIsValid: formIsValid
-        });
-    }
-
-    inputFocus = (live, key) => {
-        /**
-         * if aria live announcement is required for the input
-         */
-        if (live) {
-            const updatedFormDefinition = {
-                ...this.state.formDefinition,
-            };
-
-            updatedFormDefinition[key] = {
-                ...updatedFormDefinition[key],
-                showAriaLive: false,
-            }
-
-            this.setState((state) => ({
-                ...state,
-                formDefinition: updatedFormDefinition,
-            }));
-        }
-    }
-
-    addErrorForBtnAccessibility(formElementObj, ariaDescribedByArr) {
-        if (this.props.addFormErrorsBtnAccessibility) {
-            let errorText = formElementObj.errorDescriptions[formElementObj.errorType];
-            if (_.isEmpty(errorText) && !formElementObj.isValid && _.isEmpty(formElementObj.value) && formElementObj.validation?.required && formElementObj.errorDescriptions?.isMandatoryError) {
-                errorText = formElementObj.errorDescriptions?.isMandatoryError;
-            }
-            if (!_.isEmpty(errorText)) ariaDescribedByArr.push(`${formElementObj.label} ${constantValues._LBL_ERROR} ${errorText}`);
-        }
-        return true;
-    }
-
-    render() {
-        const isNewImplementation = /STRAIGHT_TALK/i.test(this.props.scriptingJson[constantValues.API_BRAND_NAME]);
-        /* update the city field and state field based on zipcode */
-        if (!_.isNull(this.props.mapQuestCityName) || !_.isNull(this.props.mapQuestStateName)) {
-            this.state.updatedZipCode = false;
-            this.updateCityStateFormFields();
-        }
-        let formClass = "";
-        const ariaDescribedByArr = [];
-
-        const formElementsArray = [];
-        for (let key in this.state.formDefinition) {
-            formElementsArray.push({
-                id: key,
-                config: this.state.formDefinition[key]
-            });
-        }
-        if (this.state.formType == constantValues.FORM_TYPE_RAF_CODE) {
-            formClass = "row";
-        }
-
-        const formStructure = formElementsArray.map(formElement => {
-            let FormDefinitionElem = null;
-            if ("single" === formElement.config.fieldFormat && "textbox" === formElement.config.fieldType && (_.isUndefined(formElement.config.isLoggedInUserField) || this.props.isLoggedIn === formElement.config.isLoggedInUserField)) {
+ 
+                                    
+                                    
+                                    {!_.isEmpty(formElementObj.fieldInfoLabel) ?
+                                        <p className='emailFieldInfo'>{formElementObj.fieldInfoLabel}</p> : null}
+                                    {!_.isEmpty(formElementObj.errorDescriptions) && this.addErrorForBtnAccessibility(formElementObj, ariaDescribedByArr) ?
+                                        <p id={formElementKey + this.state.formType + "error"} className="error-text legal mt-10">{formElementObj.errorDescriptions[formElementObj.errorType]}</p> : null}
+                                    {(!/\b(v1)\b/i.test(this.props.componentVersion) && !_.isEmpty(formElementObj.ariaRequiredDescription))||formElementObj.isCityField ?
+                                        <p id={"ariaDescElement" + formElementObj.elementConfig.id} className="d-none"> {formElementObj.isCityField ? (this.props.mapQuestLoading ? this.props.scriptingJson[constantValues._LBL_LOADING_CITY] : <span></span>) : formElementObj.ariaRequiredDescription}</p> : null}
+                                    {formElementObj.isCityField ?
+                                        <p className="sr-only" aria-live="polite">{this.state.updatedZipCode ? `${this.props.scriptingJson[constantValues._LBL_CITY_UPDATED] ? this.props.scriptingJson[constantValues._LBL_CITY_UPDATED] : constantValues._LBL_CITY_UPDATED} ${this.state.updatedZipCode}` : " "}</p>
+                                    : null}
+                                </div>)
+                            }) : null;
+                        })}
+                    </div>
+                )
+            } else if ("single" === formElement.config.fieldFormat && "dropdown" === formElement.config.fieldType && !formElement.config.accessible) {
+                FormDefinitionElem = (
+                    <div className="col-12 pb-10 pl-0 pr-0" key={formElement.id}>
+                        {/* eslint-disable-next-line */}
+                        <label tabIndex={/\b(v1)\b/i.test(this.props.componentVersion) && this.props?.componentClassName?.includes("disabledContent") ? constantValues.TAB_INDEX_MINUS_ONE : constantValues.TAB_INDEX_ZERO} onKeyUp={(event) => this.dropDownKeyUpHandler(event, formElement.id)} onKeyPress={(event) => { if (event.key === "Enter") { this.dropdownLabelVisibilityHandler(formElement.config.fieldFormat, formElement.id) } }} aria-describedby={formElement.id + this.state.formType + "SelectedSpan"} className="field-spa pl-0 pr-0 alternate dropdown-label bg-soft-grey" htmlFor={formElement.id + "Field"} style={formElement.config.labelMaxWidth ? { opacity: 1, maxWidth: formElement.config.labelMaxWidth } : { opacity: 1 }} id={formElement.id + this.state.formType + "Label"} aria-expanded="false" role="combobox"  aria-label={formElement.config.label}>
+                            <span className="sr-only">{formElement.config.label}</span>
+                            <span id={formElement.id + this.state.formType + "LabelSpan"} className={formElement.config.value ? "place-holder-selected" : void 0} aria-hidden="true">{formElement.config.label}</span>
+                            <div id={formElement.id + this.state.formType + "Field"} className="psuedo_select-spa" name={formElement.id + "Field"} onClick={() => this.dropdownLabelVisibilityHandler(formElement.config.fieldFormat, formElement.id)}>
+                                {formElement.config.showImage ?
+                                    <span className="d-block" style={{ 'top': '-5px' }}>
+                                        <img style={{ 'width': '18px' }} src={formElement.config.imageSource} alt={formElement.config.displayValue} />
+                                    </span> : null}
+                                <span
+                                    className={formElement.config.isValid && formElement.config.validation.required ? "selected success" : formElement.config.showImage ? "selected line-list" : "selected"}
+                                    id={formElement.id + this.state.formType + "SelectedSpan"}
+                                    value={formElement.config.value}
+                                    role="alert"
+                                    ref={this.selectedSpanRef}>{formElement.config.displayValue}</span>
+                                <ul id={formElement.id + this.state.formType} className="options" style={{ height: 'auto', scrollBehavior: 'smooth' }} aria-hidden={/\b(v1)\b/i.test(this.props.componentVersion) && this.props?.componentClassName?.includes("disabledContent") ? "false" : "true"} role="listbox">
+                                    {_.isArray(formElement.config.options) ? formElement.config.options.map((optionObj, index) => {
+                                        return <FormElements
+                                            key={optionObj.value}
+                                            dataIndex={index}
+                                            ariaDescribedBy={`${formElement.id}${this.state.formType}error`}
+                                            valueType={formElement.id}
+                                            elementType={formElement.config.elementType}
+                                            elementConfig={formElement.config.elementConfig}
+                                            elementId={formElement.id + this.state.formType + "ListElement"}
+                                            accessId={`${formElement.id}${this.state.formType}ListElement${index}`}
+                                            value={optionObj.value}
+                                            role="option"
+                                            keyPress={() => this.inputChangedHandler(optionObj.value, formElement.config.fieldFormat, formElement.id, null, formElement.config.options)}
+                                            click={() => this.inputChangedHandler(optionObj.value, formElement.config.fieldFormat, formElement.id, null, formElement.config.options)}>{optionObj.displayValue}</FormElements>
+                                    }) : null}
+                                </ul>
+                            </div>
+                        </label>
+                        {!_.isEmpty(formElement.config.errorDescriptions) ?
+                            <p id={formElement.id + this.state.formType + "error"} className="error-text legal mt-10">{formElement.config.errorDescriptions[formElement.config.errorType]}</p> : null}
+                    </div>
+                )
+            } else if ("single" === formElement.config.fieldFormat && "checkbox" === formElement.config.fieldType && (_.isUndefined(formElement.config.isLoggedInUserField) || this.props.isLoggedIn === formElement.config.isLoggedInUserField)) {
                 /* determine input group class name based on various parameter */
-                let inputGroupClassName = `col-12 pb-10 pl-0 pr-0 ${this.props?.formDefinition?.userInput?.className ? this.props?.formDefinition?.userInput?.className : ``}`;
+                let inputGroupClassName = `col-12 pb-10 pl-0 pr-0 ${this.props?.formDefinition?.termsAndConditions?.className ? this.props?.formDefinition?.termsAndConditions?.className : ``}`;
+                let checkboxClassName = "";
                 if (formElement.config.isDisabled) {
                     inputGroupClassName = "col-12 pb-10 pl-0 pr-0 disabled";
                 } else if (formElement.config.isHidden) {
                     inputGroupClassName = "col-12 pb-10 pl-0 pr-0 d-none";
-                } else if (formElement.config.isOTPField && this.props.hideOtpField) {
-                    inputGroupClassName = "col-12 pb-10 pl-0 pr-0 d-none";
-                } else if (formElement.config.isPhoneField && this.props.hidePhoneNumberField) {
-                    inputGroupClassName = "col-12 pb-10 pl-0 pr-0 d-none";
+                } else if (this.state.formType == constantValues.FORM_TYPE_RAF_CODE) {
+                    checkboxClassName = isNewImplementation ? 'ml-15' : "text-center";
                 }
-                else if (this.state.formType == constantValues.FORM_TYPE_RAF_CODE) {
-                    inputGroupClassName = "col-12 col-sm-5";
-                }
-                let inputClassName = '';
-                if (formElement?.config?.elementConfig?.isDisabledField) {
-                    inputClassName = formElement.config.elementConfig.className;
-                } else {
-                  inputClassName = formElement.config.isValid && formElement.config.touched ? formElement.config.elementConfig.className + " success" : formElement.config.elementConfig.className;
-                }
-                inputClassName = formElement.config.errorType && !formElement.config.isValid ? `${inputClassName} error` : inputClassName;
-                if (formElement.config.elementConfig.type === "tel" && formElement.config.value === "") {
-                    inputClassName = formElement.config.elementConfig.className
-                } else if (formElement.config.elementConfig.type === "email" && formElement.config.value === "") {
-                    inputClassName = inputClassName ?inputClassName:formElement.config.elementConfig.className
-                }
-
-                if (formElement.config?.eitherOr) {
-                    formElement.config.validation.required = true;
-                    let firstElem = formElementsArray.filter(function (value) { return value.config.element == 'first' });
-                    let secondElem = formElementsArray.filter(function (value) { return value.config.element == 'second' });
-
-                    if (secondElem[0].config.isValid) {
-                        firstElem[0].config.validation.required = false;
-                        firstElem[0].config.validation.waiveValidation = true;
-                    } else if (firstElem[0].config.isValid) {
-                        secondElem[0].config.validation.required = false;
-                        secondElem[0].config.validation.waiveValidation = true;
+                //Code to add disabled attribute to anchor tag when component section is disabled starts here
+                if(formElement.config.includeHTML !== undefined && this.props?.componentClassName?.includes("disabledContent")) {
+                    let repeatedIndex = [];
+                    for (let i = 0; i < formElement.config.includeHTML.length; i++) {
+                        if (formElement.config.includeHTML.charAt(i) === '<' && formElement.config.includeHTML.charAt(i+1) === 'a') {
+                            repeatedIndex.push(i);
+                        }
+                        if (formElement.config.includeHTML.charAt(i) === '<' && formElement.config.includeHTML.charAt(i+1) === '/' && formElement.config.includeHTML.charAt(i+2) === 'a' && formElement.config.includeHTML.charAt(i+3) === '>') {
+                            repeatedIndex.push(i);
+                        }
+                    }
+                    for (let i = 0; i < repeatedIndex.length; i += 2) {
+                        let word = formElement.config.includeHTML.slice(repeatedIndex[i], repeatedIndex[i+1]);
+                        if (!word.includes('disabled')) {
+                            formElement.config.includeHTML = formElement.config.includeHTML.replaceAll('<a', '<a tabindex="-1" disabled');
+                        }
                     }
                 }
+                //Code to add disabled attribute to anchor tag when component section is disabled ends here
+               
+                //Code to remove disabled attribute to anchor tag when component section is enabled starts here
+                if(formElement.config.includeHTML !== undefined && !this.props?.componentClassName?.includes("disabledContent")) {
+                    let repeatedIndex = [];
+                    for (let i = 0; i < formElement.config.includeHTML.length; i++) {
+                        if (formElement.config.includeHTML.charAt(i) === '<' && formElement.config.includeHTML.charAt(i+1) === 'a') {
+                            repeatedIndex.push(i);
+                        }
+                        if (formElement.config.includeHTML.charAt(i) === '<' && formElement.config.includeHTML.charAt(i+1) === '/' && formElement.config.includeHTML.charAt(i+2) === 'a' && formElement.config.includeHTML.charAt(i+3) === '>') {
+                            repeatedIndex.push(i);
+                        }
+                    }
+                    for (let i = 0; i < repeatedIndex.length; i += 2) {
+                        let word = formElement.config.includeHTML.slice(repeatedIndex[i], repeatedIndex[i+1]);
+                        if (word.includes('disabled')) {
+                            formElement.config.includeHTML = formElement.config.includeHTML.replaceAll('<a tabindex="-1" disabled', '<a');
+                        }
+                    }
+                }
+                //Code to remove disabled attribute to anchor tag when component section is enabled ends here
+                let ariaDescribedBy = undefined;
+                if(formElement?.config?.elementConfig?.id === "giftCheckBox" && /\b(v2)\b/i.test(this.props.componentVersion)){
+                    ariaDescribedBy = formElement.config.label;
+                }
+
                 FormDefinitionElem = (
                     <div className={inputGroupClassName} key={formElement.id}>
-                        <div className="md-form input-group alternate bg-soft-grey mt-0 mb-0">
-                            {formElement.config.tooltipContent ?
-                                <><div className="textbox-tooltip-label">
-                                    <label htmlFor={formElement.config.elementConfig.name} className={formElement.config.value || formElement.config.touched ? "checkoutLabel active" : "checkoutLabel"}>{formElement.config.label}</label>
-                                    {formElement.config.tooltipContent ?
-                                        <Tooltip
-                                            id={`${formElement.config.elementConfig.id}-tooltip`}
-                                            tooltipContent={formElement.config.tooltipContent}
-                                            tooltipConfig={formElement.config.tooltipConfig}>
-                                            <Icon
-                                                className="more-info-cards"
-                                                isSmall="true">
-                                            </Icon>
-                                        </Tooltip>
-                                        : null}
+                        <div className={`custom-control custom-checkbox-spa mt-auto pl-0 pr-0 checkbox-inside-choiceCard ${formElement.config.tooltipContent ? "checkbox-tooltip" : ""} ${checkboxClassName}`}>
+                            <FormElements
+                                valueType={formElement.id}
+                                elementType={formElement.config.fieldType}
+                                elementConfig={formElement.config.elementConfig}
+                                valid={formElement.config.isValid}
+                                ariaLabel={ariaDescribedBy}
+                                value={formElement.id}
+                                componentVersion={this.props.componentVersion}
+                                isComponentDisabled={this.props?.componentClassName?.includes("disabledContent")}
+                                changed={(event) => { this.inputChangedHandler(event, formElement.config.fieldFormat, formElement.id) }}
+                                isChecked={formElement.config.touched} />
+                            <label
+                                className="custom-control-label"
+                                htmlFor={formElement.config.elementConfig.id}>
+                                <div className={formElement.config.labelDivClass ? formElement.config.labelDivClass : "mt-10 mb-10"}>
+                                    <p className="caption-one text-color-grey">{formElement.config.label}</p>
                                 </div>
-                                    <div className="textbox-tooltip-field">
-                                        <FormElements
-                                            valueType={formElement.id}
-                                            elementType={formElement.config.elementType}
-                                            elementConfig={formElement.config.elementConfig}
-                                            value={formElement.config.isCountryField ? formElement.config.displayValue : formElement.config.value}
-                                            classVal={inputClassName}
-                                            changed={(event) => this.inputChangedHandler(event, formElement.config.fieldFormat, formElement.id, null, null, formElement.config.skipOnChangeValidation)}
-                                            focusOut={(event) => this.focusOutValidationHandler(event, formElement.config.fieldFormat, formElement.id)}
-                                            label={formElement.config.label}
-                                            valid={formElement.config.isValid}
-                                            touched={formElement.config.touched}
-                                            onFocus={this.inputFocus}
-                                            live={formElement.config.live}
-                                            componentVersion={this.props.componentVersion}
-                                            isComponentDisabled={this.props?.componentClassName?.includes("disabledContent")}
-                                        />
-                                    </div>
-                                </> : <>
-                                    <label htmlFor={formElement.config.elementConfig.name} className={formElement.config.value || formElement.config.touched ? "checkoutLabel active" : "checkoutLabel"}>{formElement.config.label}</label>
+                                {formElement.config.includeHTML ? <div className={formElement.config.labelDivClass ? formElement.config.labelDivClass : "mt-10 mb-10"} dangerouslySetInnerHTML={{ __html: formElement.config.includeHTML }}></div> : null}
+                            </label>
+                            {formElement.config.tooltipContent ?
+                                <Tooltip
+                                    tooltipContent={formElement.config.tooltipContent}
+                                    ariaLabel={formElement.config.tooltipAriaLabel}
+                                    tooltipConfig={formElement.config.tooltipConfig}
+                                />
+                                : null}
+                        </div>
+                    </div>
+                )
+            } else if ("single" === formElement.config.fieldFormat && "toggle" === formElement.config.fieldType && !formElement.config.isHidden && (_.isUndefined(formElement.config.isLoggedInUserField) || this.props.isLoggedIn === formElement.config.isLoggedInUserField) && !formElement.config.refillCard) {
+                FormDefinitionElem = (
+                    <div className="default-switch" key={formElement.id}>
+                        <div className="row">
+                            <div className="col-7">
+                                <p className="caption-one-normal pt-2">{formElement.config.label}</p>
+                            </div>
+                            <div className="col-5 text-right">
+                                <div className="custom-control custom-switch p-0">
                                     <FormElements
                                         valueType={formElement.id}
                                         elementType={formElement.config.elementType}
                                         elementConfig={formElement.config.elementConfig}
-                                        value={formElement.config.isCountryField ? formElement.config.displayValue : formElement.config.value}
-                                        classVal={inputClassName}
-                                        changed={(event) => this.inputChangedHandler(event, formElement.config.fieldFormat, formElement.id, null, null, formElement.config.skipOnChangeValidation)}
-                                        focusOut={(event) => this.focusOutValidationHandler(event, formElement.config.fieldFormat, formElement.id)}
                                         label={formElement.config.label}
                                         valid={formElement.config.isValid}
-                                        touched={formElement.config.touched}
-                                        onFocus={this.inputFocus}
-                                        live={formElement.config.live}
-                                        componentVersion={this.props.componentVersion}
-                                        isComponentDisabled={this.props?.componentClassName?.includes("disabledContent")}
-                                    />
-                                </>}
-                            {formElement.config.cardBrand ?
-                                <span className="input-card-type-image">
-                                    <img
-                                        className="card-type-logo"
-                                        style={{ width: '45px' }}
-                                        alt={formElement.config.cardBrand}
-                                        src={checkoutDetailDataUtil.getCreditCardVendorLogoImage(formElement.config.cardBrand, this.props.scriptingJson.creditCardVendors)} />
-                                </span> : null}
-                            {formElement.config.showViewOption && formElement.config.value ?
-                                //eslint-disable-next-line
-                                <a
-                                    className="view-link d-block caption-two"
-                                    tabIndex="0"
-                                    role="button"
-                                    aria-label={`${this.props.scriptingJson[constantValues._LNK_VIEW]} ${this.props.scriptingJson[constantValues._LBL_FORM_PASSWORD_WITHOUT_ASTRIK]}`}
-                                    name={`${formElement.config.elementConfig.id}Anchor`}
-                                    onKeyPress={(event) => { if (event.key === "Enter") { this.passwordFieldDisplayHandler(formElement.config.elementConfig.id) } }}
-                                    onClick={() => this.passwordFieldDisplayHandler(formElement.config.elementConfig.id)}>{this.props.scriptingJson[constantValues._LNK_VIEW]}</a> : null}
+                                        value={formElement.id}
+                                        changed={() => { }}
+                                        isChecked={formElement.config.touched} />
+                                    <label
+                                        className="custom-control-label"
+                                        htmlFor={formElement.config.elementConfig.id}
+                                        onClick={(event) => this.inputChangedHandler(event, formElement.config.fieldFormat, formElement.id)}></label>
+                                </div>
+                            </div>
                         </div>
-                        {!_.isEmpty(formElement.config.errorDescriptions) && this.addErrorForBtnAccessibility(formElement.config, ariaDescribedByArr)&&!(formElement?.config?.elementConfig?.id==="rafMinInput"|| formElement?.config?.elementConfig?.id==="rafCodeInput")?
-                            <p id={formElement.id + this.state.formType + "error"} aria-live={formElement.config.showAriaLive ? "assertive" : "off"} className={formElement.config.errorClassName ? formElement.config.errorClassName : "error-text legal mt-10"}>{formElement.config.errorDescriptions[formElement.config.errorType]}</p> : null}
-                        
-                        {!_.isEmpty(formElement?.config?.errorDescriptions)&&this.addErrorForBtnAccessibility(formElement?.config,ariaDescribedByArr)&&(formElement?.config?.elementConfig?.id==="rafMinInput"|| formElement?.config?.elementConfig?.id==="rafCodeInput")&&formElement?.config?.errorType?
-                            <>
-                            {/TOTAL_WIRELESS/i.test(formElement?.config?.brandName)?
-                                <p id={formElement.id + this.state.formType + "error"} aria-live={formElement.config.showAriaLive ? "assertive" : "off"} className={formElement.config.errorClassName ? formElement.config.errorClassName : "error-text legal mt-10"}>
-                                    <span class="icon dark-theme large-icon">
-                                        <i class="error-total-red"></i>
-                                    </span>
-                                    {formElement?.config?.errorDescriptions[formElement?.config?.errorType]}
-                                </p>
-                                :
-                                <p id={formElement.id + this.state.formType + "error"} aria-live={formElement.config.showAriaLive ? "assertive" : "off"} className={formElement.config.errorClassName ? formElement.config.errorClassName : "error-text legal mt-10"}>{formElement.config.errorDescriptions[formElement.config.errorType]}</p>}
-                        </>:null}
                     </div>
-                );
-            } else if ("multiple" === formElement.config.fieldFormat && "textbox" === formElement.config.fieldType) {
-                const fieldClasses = formElement.config.fieldClasses;
-                const isStraighttalkBrand = /STRAIGHT_TALK/i.test(this.props.scriptingJson[constantValues.API_BRAND_NAME]);
+                )
+            } else if ("single" === formElement.config.fieldFormat && "gifttextarea" === formElement.config.fieldType) {
+                const maxChar = formElement.config.characterLimitGiftMessage || null;
                 FormDefinitionElem = (
-                    <div className="row ml-0 mr-0" key={formElement.id}>
-                        {Object.keys(formElement.config).map(formElementKey => {
-                            return _.isObject(formElement.config[formElementKey]) ? [...Array(formElement.config[formElementKey])].map((formElementObj) => {
-                                let inputClassName = formElementObj.isValid && formElementObj.touched ? formElementObj.elementConfig.className + " success" : '';
-                                inputClassName = formElementObj.errorType && !formElementObj.isValid ? `${inputClassName} error` : inputClassName;
-                                return (<div className={!fieldClasses ? formElementObj.isFirstField ? "col-6 pb-10 pl-0 pr-3" : "col-6 pb-10 pr-0 pl-3" : fieldClasses} key={formElementKey}>
-                                    <div className="md-form input-group alternate mt-0 mb-0 bg-soft-grey">
-                                        <label htmlFor={formElementObj.elementConfig.name} className={formElementObj.value ? "checkoutLabel active" : "checkoutLabel"}>{formElementObj.label}</label>
-                                        {/\b(v1)\b/i.test(this.props.componentVersion) ?
-                                        <FormElements
-                                            ariaDescribedBy={`${formElementKey}${this.state.formType}error ${formElementObj.isCityField ? "ariaDescElement" + formElementObj.elementConfig.id : ""}`}
-                                            ariaLabel="This Field is changed to* "
-                                            valueType={formElementKey}
-                                            elementType={formElementObj.elementType}
-                                            elementConfig={formElementObj.elementConfig}
-                                            value={formElementObj.value}
-                                            classVal={(this.props.getMarketSegmentError || this.props.editShippingMarketSegmentError) && (formElementObj.elementConfig.id === "customerZip" || formElementObj.elementConfig.id === "editShippingCustomerZip") ? `${inputClassName} error` :  inputClassName}
-                                            changed={(event) => this.inputChangedHandler(event, formElement.config.fieldFormat, formElement.id, formElementKey,null,null,formElementObj.isCheckoutShippingZip)}
-                                            focusOut={(event) => !formElementObj?.isCheckoutShippingZip?this.focusOutValidationHandler(event, formElement.config.fieldFormat, formElement.id, formElementKey):null}
-                                            label={formElementObj.label}
-                                            valid={formElementObj.isValid}
-                                            componentVersion={this.props.componentVersion}
-                                            isComponentDisabled={this.props?.componentClassName?.includes("disabledContent")}
-                                            touched={formElementObj.touched} /> :  
-                                            <FormElements
-                                            ariaDescribedBy={`${formElementKey}${this.state.formType}error ${!_.isEmpty(formElementObj.ariaRequiredDescription)||formElementObj.isCityField ? "ariaDescElement" + formElementObj.elementConfig.id : ""}`}
-                                            valueType={formElementKey}
-                                            elementType={formElementObj.elementType}
-                                            elementConfig={formElementObj.elementConfig}
-                                            value={formElementObj.value}
-                                            classVal={(this.props.getMarketSegmentError || this.props.editShippingMarketSegmentError) && (formElementObj.elementConfig.id === "customerZip" || formElementObj.elementConfig.id === "editShippingCustomerZip") ? `${inputClassName} error` :  inputClassName}
-                                            changed={(event) => this.inputChangedHandler(event, formElement.config.fieldFormat, formElement.id, formElementKey,null,null,formElementObj.isCheckoutShippingZip)}
-                                            focusOut={(event) => !formElementObj?.isCheckoutShippingZip?this.focusOutValidationHandler(event, formElement.config.fieldFormat, formElement.id, formElementKey):null}
-                                            label={formElementObj.isCardExpiryField && formElementObj.elementConfig["aria-label"] ? formElementObj.elementConfig["aria-label"] : formElementObj.label}
-                                            valid={formElementObj.isValid}
-                                            componentVersion={this.props.componentVersion}
-                                            isComponentDisabled={this.props?.componentClassName?.includes("disabledContent")}
-                                            touched={formElementObj.touched} />}
-                                    </div>
+                    <div key={formElement.id} style={{ width: '100%' }} className={this.props.isGiftMessageEnabled ? "gift-info-container" : "gift-info-container d-none"} tabindex="-1">
+                        <p className="caption-three-bold text-color-grey text-uppercase">{formElement.config.heading}</p>
+                        <div className="col-12 pt-10 pb-10 pl-0 pr-0">
+                            <div className="md-form alternate text-area">
+                                <label htmlFor={formElement.config.elementConfig.id}>{formElement.config.label}</label>
+                                <FormElements
+                                    elementType={formElement.config.elementType}
+                                    elementConfig={formElement.config.elementConfig}
+                                    label={`${formElement.config.heading} ${formElement.config.label}`}
+                                    value={formElement.config.value}
+                                    onPaste={(event) => { if (event.key === "Enter" || !constantValues.NO_SPECIAL_CHARS.test(event.clipboardData.getData('text'))) { event.preventDefault(); } }}
+                                    keyPress={(event) => { if (event.key === "Enter" || !constantValues.NO_SPECIAL_CHARS.test(event.key)) { event.preventDefault(); } }}
+                                    changed={(event) => this.inputChangedHandler(event, formElement.config.fieldFormat, formElement.id)} />
+                            </div>
+                            <p id={formElement.config.elementConfig['aria-describedby']} className="text-color-grey caption-two text-right">{formElement.config.characterCountLabel}
+                                <span id="characterCount">{formElement.config.value.length}</span>
+                                <span>{formElement.config.characterLimitGiftMessage ? `/${formElement.config.characterLimitGiftMessage}` : null}</span>
+                                {parseInt(formElement.config.value.length,10) === parseInt(maxChar,10)?<span className='visually-hidden'>Reached maximum character limit</span>:''}
+                            </p>
+                        </div>
+                    </div>
+                )
+            } else if ("single" === formElement.config.fieldFormat && "text" === formElement.config.fieldType && !formElement.config.isHidden && this.props.isLoggedIn === formElement.config.isLoggedInUserField) {
+                FormDefinitionElem = (
+                    /\b(v1)\b/i.test(this.props.componentVersion) ?
+                        <p className="legal text-color-grey pb-10" tabIndex="0" aria-label={formElement.config.value} key={formElement.id}>
+                            <Icon className="error-black" extraClass="pr-1" />
+                            {formElement.config.value}
+                        </p> :
+                        <p className="legal text-color-grey pb-10" key={formElement.id}>
+                            <Icon className="error-black" extraClass="pr-1" />
+                            {formElement.config.value}
+                        </p>
+                )
+            } else if ("single" === formElement.config.fieldFormat && "reCaptcha" === formElement.config.fieldType && !formElement.config.isHidden) {
+                FormDefinitionElem = (
+                    <div className={formElement.config.isHidden ? "d-none" : "mb-15 captcha-wrapper text-center"} id="recaptcha-spa-impl" key={formElement.id}>
+                        <ReCAPTCHA
+                            sitekey={process.env.NODE_ENV === 'development' ? "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI" : this.props.scriptingJson[constantValues.RECAPTCHA_SITE_KEY]}
+                            ref={this.props.captchaRef}
+                            onChange={(recaptchaToken) => this.props.onInitDetailUpdateInMyAccountStore(recaptchaToken, "recaptchaToken")} />
+                    </div>
+                )
+            } else if ("single" === formElement.config.fieldFormat && "dropdown" === formElement.config.fieldType) {
+                FormDefinitionElem = (
+                    <FormDropDown
+                        key={formElement.id}
+                        formElement={formElement}
+                        inputChangedHandler={this.inputChangedHandler}
+                        formType={this.state.formType} />
+                )
+            } else if ("single" === formElement.config.fieldFormat && "label" === formElement.config.fieldType && !formElement.config.isHidden) {
+                FormDefinitionElem = (
+                    <p className={formElement.config.notificationClass} key={formElement.id}>
+                        {formElement.config.value}
+                    </p>
+                )
+            }
+                else if("single"===formElement.config.fieldFormat&&"toggle"===formElement.config.fieldType&&!formElement.config.isHidden&&
+                (_.isUndefined(formElement.config.isLoggedInUserField)||this.props.isLoggedIn===formElement.config.isLoggedInUserField)&&(this?.props?.state?.formDefinition?.formType !== "ModifySavedCreditCard") && (this.props?.accountProfileData?.accountLevelAutoRefillStatus === true || !_.isEmpty(this.props?.accountProfileData?.autoRefill)) && sessionStorage.editPayment !== "true" &&(!window.location.pathname.includes("manage-auto-refill"))){
+                    if(this.props.accountProfileData?.activeLines>1){
+                        FormDefinitionElem=(
+                            <div key={formElement.id}>
+                                <p className="caption-one-info text-color-grey pb-10"><Icon className="error-black" extraClass="pr-1" />
+                                    {this.props.scriptingJson[constantValues._LBL_AUTO_REFILL_ENROLLMENT_PAYMENT_INFO]}
+                                </p>
+                            </div>
+                        )
+                    }else{
+                    FormDefinitionElem = (
+                        <div className ="default-switch" key={formElement.id}>
+                            <div className="row">
+                            <div className="col-7">
+                                <p className="caption-one-normal pt-2">{formElement.config.label}</p>
+                            </div>
+                            <div className="col-5 text-right">
+                                <div className="custom-control custom-switch p-0">
+                                    <FormElements
+                                        valueType={formElement.id}
+                                        elementType={formElement.config.elementType}
+                                        elementConfig={formElement.config.elementConfig}
+                                        label={formElement.config.label}
+                                        valid={formElement.config.isValid}
+                                        value={formElement.id}
+                                        changed={() => {}}
+                                        isChecked={formElement.config.touched}/>
+                                    <label
+                                        className="custom-control-label"
+                                        htmlFor={formElement.config.elementConfig.id}
+                                        onClick={(event) => this.inputChangedHandler(event,formElement.config.fieldFormat,formElement.id)}></label>
+                                </div>
+                            </div>
+                            </div>
+                        </div>
+                    )
+                    }
+                }
+                //isMultiline
+            return FormDefinitionElem;
+        });
 
-                                    {isStraighttalkBrand && this.props.getMarketSegmentError && formElementObj.elementConfig.id === "customerZip" ? (
-                                        <div className="mksg-error-message-container">
-                                            <div className="mksg-error-icon-text-wrapper">
-                                                <div className='mksg-error-icon-aligment'>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="19" viewBox="0 0 18 19" fill="none">
-                                                        <path fillRule="evenodd" clipRule="evenodd" d="M1.19922 9.20332C1.19922 4.89297 4.68887 1.40332 8.99922 1.40332C13.3096 1.40332 16.7992 4.89297 16.7992 9.20332C16.7992 13.5137 13.3029 17.0033 8.99922 17.0033C4.69554 17.0033 1.19922 13.5137 1.19922 9.20332ZM12.8598 6.44526C13.1643 6.14071 13.1649 5.64707 12.8605 5.34247C12.5559 5.03789 12.0617 5.03794 11.757 5.34247L8.99905 8.10047L6.24106 5.34247C5.93654 5.03816 5.44354 5.03825 5.13897 5.34247C4.83442 5.64702 4.83385 6.14063 5.13828 6.44526L7.89627 9.20325L5.13828 11.9612C4.83384 12.2659 4.83442 12.7595 5.13897 13.064C5.44353 13.3684 5.93650 13.3684 6.24106 13.064L8.99905 10.306L11.757 13.064C12.0617 13.3686 12.5559 13.3686 12.8605 13.064C13.1648 12.7594 13.1643 12.2657 12.8598 11.9612L10.1018 9.20325L12.8598 6.44526Z" fill="black" />
-                                                    </svg>
-                                                </div>
-                                                <p className="mksg-error-text">
-                                                    {this.props.getMarketSegmentError}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <p className="error-text legal mt-10">{this.props.getMarketSegmentError && formElementObj.elementConfig.id === "customerZip" ? this.props.getMarketSegmentError : ""}</p>
-                                    )}
+        return (
+            <form autoComplete="off" {...this.props?.state?.alertRoleRequired && {'role' : 'alert'}}  className={`forms-row ${this.props.formClassName ?? ''} ${formClass}`}>
+                {formStructure}
+                {this.props.addFormErrorsBtnAccessibility ? 
+                    <p className="d-none" id={`${this.state.formType}BtnErrors`}>{!_.isEmpty(ariaDescribedByArr) ? ariaDescribedByArr.join(" ") : ""}</p>
+                : null}
+            </form>
+        )
+    }
+}
 
-                                    {isStraighttalkBrand && this.props.editShippingMarketSegmentError && formElementObj.elementConfig.id === "editShippingCustomerZip"  ? (
-                                        <div className="mksg-error-message-container">
-                                            <div className="mksg-error-icon-text-wrapper">
-                                                <div className='mksg-error-icon-aligment'>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="19" viewBox="0 0 18 19" fill="none">
-                                                        <path fillRule="evenodd" clipRule="evenodd" d="M1.19922 9.20332C1.19922 4.89297 4.68887 1.40332 8.99922 1.40332C13.3096 1.40332 16.7992 4.89297 16.7992 9.20332C16.7992 13.5137 13.3029 17.0033 8.99922 17.0033C4.69554 17.0033 1.19922 13.5137 1.19922 9.20332ZM12.8598 6.44526C13.1643 6.14071 13.1649 5.64707 12.8605 5.34247C12.5559 5.03789 12.0617 5.03794 11.757 5.34247L8.99905 8.10047L6.24106 5.34247C5.93654 5.03816 5.44354 5.03825 5.13897 5.34247C4.83442 5.64702 4.83385 6.14063 5.13828 6.44526L7.89627 9.20325L5.13828 11.9612C4.83384 12.2659 4.83442 12.7595 5.13897 13.064C5.44353 13.3684 5.93650 13.3684 6.24106 13.064L8.99905 10.306L11.757 13.064C12.0617 13.3686 12.5559 13.3686 12.8605 13.064C13.1648 12.7594 13.1643 12.2657 12.8598 11.9612L10.1018 9.20325L12.8598 6.44526Z" fill="black" />
-                                                    </svg>
-                                                </div>
-                                                <p className="mksg-error-text">
-                                                    {this.props.editShippingMarketSegmentError}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <p className="error-text legal mt-10">{this.props.editShippingMarketSegmentError && formElementObj.elementConfig.id === "editShippingCustomerZip" ? this.props.editShippingMarketSegmentError : ""}</p>
-                                    )}
+Forms.propTypes = {
+    state: PropTypes.object,
+    isLoggedIn: PropTypes.bool,
+    scriptingJson: PropTypes.object,
+    creditCardVendors: PropTypes.array,
+    componentVersion: PropTypes.string,
+    mapQuestStateName: PropTypes.string,
+    mapQuestCityName: PropTypes.string,
+    mapQuestCountryName: PropTypes.string,
+    mapQuestFormType: PropTypes.string,
+    componentClassName: PropTypes.string,
+    mapQuestErrorMessage: PropTypes.string,
+    dropDownFormFieldData: PropTypes.object,
+    updateCreditCardVendorIconHandler: PropTypes.func,
+    onInitFormDetailUpdateInStore: PropTypes.func,
+};
+
+const mapStateToProps = state => {
+    return {
+        isLoggedIn: state.authDetail.isLoggedIn,
+        creditCardVendors: state.checkoutDetail.creditCardVendors,
+        dropDownFormFieldData: state.checkoutDetail.dropDownFormFieldData,
+        mapQuestStateName: state.checkoutDetail.mapQuestData.stateName,
+        mapQuestCityName: state.checkoutDetail.mapQuestData.cityName,
+        mapQuestCountryName: state.checkoutDetail.mapQuestData.countryName,
+        mapQuestFormType: state.checkoutDetail.mapQuestData.formType,
+        dropDownFormFieldAccess: state.checkoutDetail.dropDownFormFieldAccess,
+        mapQuestErrorMessage: state.checkoutDetail.mapQuestData.mapQuestApiErrorMessage,
+        mapQuestLoading: state.checkoutDetail.mapQuestLoading,
+        accountProfileData: state.myAccount.accountProfileData,
+        getMarketSegmentError : state.cartDetail.getMarketSegmentError,
+        editShippingMarketSegmentError: state.cartDetail.editShippingMarketSegmentError
+    }
+}
+
+const mapDispatchToProps = dispatch => {
+    return {
+        onInitFormDetailUpdateInStore: (formDetailsJson, formName) => dispatch(actions.initFormDetailUpdateInStore(formDetailsJson, formName)),
+        onInitUpdateCityStateInStore: (mapQuestApiUrl, formType) => dispatch(actions.initUpdateCityState(mapQuestApiUrl, formType)),
+        onInitDetailUpdateInMyAccountStore: (detailsJson, itemName, isCommunicationPreference) => dispatch(actions.initDetailUpdateInMyAccountStore(detailsJson, itemName, isCommunicationPreference)),
+        resetMarketSegmentError : () => dispatch(actions.resetMarketSegmentError()),
+        editShippingMarketSegmentErrorHandler: (msg) => dispatch(actions.editShippingMarketSegmentErrorHandler(msg))
+    }
+}
+
+export default connect(mapStateToProps, mapDispatchToProps)(Forms);
