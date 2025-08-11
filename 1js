@@ -1,333 +1,373 @@
- 
-                                    
-                                    
-                                    {!_.isEmpty(formElementObj.fieldInfoLabel) ?
-                                        <p className='emailFieldInfo'>{formElementObj.fieldInfoLabel}</p> : null}
-                                    {!_.isEmpty(formElementObj.errorDescriptions) && this.addErrorForBtnAccessibility(formElementObj, ariaDescribedByArr) ?
-                                        <p id={formElementKey + this.state.formType + "error"} className="error-text legal mt-10">{formElementObj.errorDescriptions[formElementObj.errorType]}</p> : null}
-                                    {(!/\b(v1)\b/i.test(this.props.componentVersion) && !_.isEmpty(formElementObj.ariaRequiredDescription))||formElementObj.isCityField ?
-                                        <p id={"ariaDescElement" + formElementObj.elementConfig.id} className="d-none"> {formElementObj.isCityField ? (this.props.mapQuestLoading ? this.props.scriptingJson[constantValues._LBL_LOADING_CITY] : <span></span>) : formElementObj.ariaRequiredDescription}</p> : null}
-                                    {formElementObj.isCityField ?
-                                        <p className="sr-only" aria-live="polite">{this.state.updatedZipCode ? `${this.props.scriptingJson[constantValues._LBL_CITY_UPDATED] ? this.props.scriptingJson[constantValues._LBL_CITY_UPDATED] : constantValues._LBL_CITY_UPDATED} ${this.state.updatedZipCode}` : " "}</p>
-                                    : null}
-                                </div>)
-                            }) : null;
-                        })}
-                    </div>
-                )
-            } else if ("single" === formElement.config.fieldFormat && "dropdown" === formElement.config.fieldType && !formElement.config.accessible) {
-                FormDefinitionElem = (
-                    <div className="col-12 pb-10 pl-0 pr-0" key={formElement.id}>
-                        {/* eslint-disable-next-line */}
-                        <label tabIndex={/\b(v1)\b/i.test(this.props.componentVersion) && this.props?.componentClassName?.includes("disabledContent") ? constantValues.TAB_INDEX_MINUS_ONE : constantValues.TAB_INDEX_ZERO} onKeyUp={(event) => this.dropDownKeyUpHandler(event, formElement.id)} onKeyPress={(event) => { if (event.key === "Enter") { this.dropdownLabelVisibilityHandler(formElement.config.fieldFormat, formElement.id) } }} aria-describedby={formElement.id + this.state.formType + "SelectedSpan"} className="field-spa pl-0 pr-0 alternate dropdown-label bg-soft-grey" htmlFor={formElement.id + "Field"} style={formElement.config.labelMaxWidth ? { opacity: 1, maxWidth: formElement.config.labelMaxWidth } : { opacity: 1 }} id={formElement.id + this.state.formType + "Label"} aria-expanded="false" role="combobox"  aria-label={formElement.config.label}>
-                            <span className="sr-only">{formElement.config.label}</span>
-                            <span id={formElement.id + this.state.formType + "LabelSpan"} className={formElement.config.value ? "place-holder-selected" : void 0} aria-hidden="true">{formElement.config.label}</span>
-                            <div id={formElement.id + this.state.formType + "Field"} className="psuedo_select-spa" name={formElement.id + "Field"} onClick={() => this.dropdownLabelVisibilityHandler(formElement.config.fieldFormat, formElement.id)}>
-                                {formElement.config.showImage ?
-                                    <span className="d-block" style={{ 'top': '-5px' }}>
-                                        <img style={{ 'width': '18px' }} src={formElement.config.imageSource} alt={formElement.config.displayValue} />
-                                    </span> : null}
-                                <span
-                                    className={formElement.config.isValid && formElement.config.validation.required ? "selected success" : formElement.config.showImage ? "selected line-list" : "selected"}
-                                    id={formElement.id + this.state.formType + "SelectedSpan"}
-                                    value={formElement.config.value}
-                                    role="alert"
-                                    ref={this.selectedSpanRef}>{formElement.config.displayValue}</span>
-                                <ul id={formElement.id + this.state.formType} className="options" style={{ height: 'auto', scrollBehavior: 'smooth' }} aria-hidden={/\b(v1)\b/i.test(this.props.componentVersion) && this.props?.componentClassName?.includes("disabledContent") ? "false" : "true"} role="listbox">
-                                    {_.isArray(formElement.config.options) ? formElement.config.options.map((optionObj, index) => {
-                                        return <FormElements
-                                            key={optionObj.value}
-                                            dataIndex={index}
-                                            ariaDescribedBy={`${formElement.id}${this.state.formType}error`}
-                                            valueType={formElement.id}
-                                            elementType={formElement.config.elementType}
-                                            elementConfig={formElement.config.elementConfig}
-                                            elementId={formElement.id + this.state.formType + "ListElement"}
-                                            accessId={`${formElement.id}${this.state.formType}ListElement${index}`}
-                                            value={optionObj.value}
-                                            role="option"
-                                            keyPress={() => this.inputChangedHandler(optionObj.value, formElement.config.fieldFormat, formElement.id, null, formElement.config.options)}
-                                            click={() => this.inputChangedHandler(optionObj.value, formElement.config.fieldFormat, formElement.id, null, formElement.config.options)}>{optionObj.displayValue}</FormElements>
-                                    }) : null}
-                                </ul>
-                            </div>
-                        </label>
-                        {!_.isEmpty(formElement.config.errorDescriptions) ?
-                            <p id={formElement.id + this.state.formType + "error"} className="error-text legal mt-10">{formElement.config.errorDescriptions[formElement.config.errorType]}</p> : null}
-                    </div>
-                )
-            } else if ("single" === formElement.config.fieldFormat && "checkbox" === formElement.config.fieldType && (_.isUndefined(formElement.config.isLoggedInUserField) || this.props.isLoggedIn === formElement.config.isLoggedInUserField)) {
-                /* determine input group class name based on various parameter */
-                let inputGroupClassName = `col-12 pb-10 pl-0 pr-0 ${this.props?.formDefinition?.termsAndConditions?.className ? this.props?.formDefinition?.termsAndConditions?.className : ``}`;
-                let checkboxClassName = "";
-                if (formElement.config.isDisabled) {
-                    inputGroupClassName = "col-12 pb-10 pl-0 pr-0 disabled";
-                } else if (formElement.config.isHidden) {
-                    inputGroupClassName = "col-12 pb-10 pl-0 pr-0 d-none";
-                } else if (this.state.formType == constantValues.FORM_TYPE_RAF_CODE) {
-                    checkboxClassName = isNewImplementation ? 'ml-15' : "text-center";
-                }
-                //Code to add disabled attribute to anchor tag when component section is disabled starts here
-                if(formElement.config.includeHTML !== undefined && this.props?.componentClassName?.includes("disabledContent")) {
-                    let repeatedIndex = [];
-                    for (let i = 0; i < formElement.config.includeHTML.length; i++) {
-                        if (formElement.config.includeHTML.charAt(i) === '<' && formElement.config.includeHTML.charAt(i+1) === 'a') {
-                            repeatedIndex.push(i);
-                        }
-                        if (formElement.config.includeHTML.charAt(i) === '<' && formElement.config.includeHTML.charAt(i+1) === '/' && formElement.config.includeHTML.charAt(i+2) === 'a' && formElement.config.includeHTML.charAt(i+3) === '>') {
-                            repeatedIndex.push(i);
-                        }
-                    }
-                    for (let i = 0; i < repeatedIndex.length; i += 2) {
-                        let word = formElement.config.includeHTML.slice(repeatedIndex[i], repeatedIndex[i+1]);
-                        if (!word.includes('disabled')) {
-                            formElement.config.includeHTML = formElement.config.includeHTML.replaceAll('<a', '<a tabindex="-1" disabled');
-                        }
-                    }
-                }
-                //Code to add disabled attribute to anchor tag when component section is disabled ends here
-               
-                //Code to remove disabled attribute to anchor tag when component section is enabled starts here
-                if(formElement.config.includeHTML !== undefined && !this.props?.componentClassName?.includes("disabledContent")) {
-                    let repeatedIndex = [];
-                    for (let i = 0; i < formElement.config.includeHTML.length; i++) {
-                        if (formElement.config.includeHTML.charAt(i) === '<' && formElement.config.includeHTML.charAt(i+1) === 'a') {
-                            repeatedIndex.push(i);
-                        }
-                        if (formElement.config.includeHTML.charAt(i) === '<' && formElement.config.includeHTML.charAt(i+1) === '/' && formElement.config.includeHTML.charAt(i+2) === 'a' && formElement.config.includeHTML.charAt(i+3) === '>') {
-                            repeatedIndex.push(i);
-                        }
-                    }
-                    for (let i = 0; i < repeatedIndex.length; i += 2) {
-                        let word = formElement.config.includeHTML.slice(repeatedIndex[i], repeatedIndex[i+1]);
-                        if (word.includes('disabled')) {
-                            formElement.config.includeHTML = formElement.config.includeHTML.replaceAll('<a tabindex="-1" disabled', '<a');
-                        }
-                    }
-                }
-                //Code to remove disabled attribute to anchor tag when component section is enabled ends here
-                let ariaDescribedBy = undefined;
-                if(formElement?.config?.elementConfig?.id === "giftCheckBox" && /\b(v2)\b/i.test(this.props.componentVersion)){
-                    ariaDescribedBy = formElement.config.label;
-                }
-
-                FormDefinitionElem = (
-                    <div className={inputGroupClassName} key={formElement.id}>
-                        <div className={`custom-control custom-checkbox-spa mt-auto pl-0 pr-0 checkbox-inside-choiceCard ${formElement.config.tooltipContent ? "checkbox-tooltip" : ""} ${checkboxClassName}`}>
-                            <FormElements
-                                valueType={formElement.id}
-                                elementType={formElement.config.fieldType}
-                                elementConfig={formElement.config.elementConfig}
-                                valid={formElement.config.isValid}
-                                ariaLabel={ariaDescribedBy}
-                                value={formElement.id}
-                                componentVersion={this.props.componentVersion}
-                                isComponentDisabled={this.props?.componentClassName?.includes("disabledContent")}
-                                changed={(event) => { this.inputChangedHandler(event, formElement.config.fieldFormat, formElement.id) }}
-                                isChecked={formElement.config.touched} />
-                            <label
-                                className="custom-control-label"
-                                htmlFor={formElement.config.elementConfig.id}>
-                                <div className={formElement.config.labelDivClass ? formElement.config.labelDivClass : "mt-10 mb-10"}>
-                                    <p className="caption-one text-color-grey">{formElement.config.label}</p>
-                                </div>
-                                {formElement.config.includeHTML ? <div className={formElement.config.labelDivClass ? formElement.config.labelDivClass : "mt-10 mb-10"} dangerouslySetInnerHTML={{ __html: formElement.config.includeHTML }}></div> : null}
-                            </label>
-                            {formElement.config.tooltipContent ?
-                                <Tooltip
-                                    tooltipContent={formElement.config.tooltipContent}
-                                    ariaLabel={formElement.config.tooltipAriaLabel}
-                                    tooltipConfig={formElement.config.tooltipConfig}
-                                />
-                                : null}
-                        </div>
-                    </div>
-                )
-            } else if ("single" === formElement.config.fieldFormat && "toggle" === formElement.config.fieldType && !formElement.config.isHidden && (_.isUndefined(formElement.config.isLoggedInUserField) || this.props.isLoggedIn === formElement.config.isLoggedInUserField) && !formElement.config.refillCard) {
-                FormDefinitionElem = (
-                    <div className="default-switch" key={formElement.id}>
-                        <div className="row">
-                            <div className="col-7">
-                                <p className="caption-one-normal pt-2">{formElement.config.label}</p>
-                            </div>
-                            <div className="col-5 text-right">
-                                <div className="custom-control custom-switch p-0">
-                                    <FormElements
-                                        valueType={formElement.id}
-                                        elementType={formElement.config.elementType}
-                                        elementConfig={formElement.config.elementConfig}
-                                        label={formElement.config.label}
-                                        valid={formElement.config.isValid}
-                                        value={formElement.id}
-                                        changed={() => { }}
-                                        isChecked={formElement.config.touched} />
-                                    <label
-                                        className="custom-control-label"
-                                        htmlFor={formElement.config.elementConfig.id}
-                                        onClick={(event) => this.inputChangedHandler(event, formElement.config.fieldFormat, formElement.id)}></label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )
-            } else if ("single" === formElement.config.fieldFormat && "gifttextarea" === formElement.config.fieldType) {
-                const maxChar = formElement.config.characterLimitGiftMessage || null;
-                FormDefinitionElem = (
-                    <div key={formElement.id} style={{ width: '100%' }} className={this.props.isGiftMessageEnabled ? "gift-info-container" : "gift-info-container d-none"} tabindex="-1">
-                        <p className="caption-three-bold text-color-grey text-uppercase">{formElement.config.heading}</p>
-                        <div className="col-12 pt-10 pb-10 pl-0 pr-0">
-                            <div className="md-form alternate text-area">
-                                <label htmlFor={formElement.config.elementConfig.id}>{formElement.config.label}</label>
-                                <FormElements
-                                    elementType={formElement.config.elementType}
-                                    elementConfig={formElement.config.elementConfig}
-                                    label={`${formElement.config.heading} ${formElement.config.label}`}
-                                    value={formElement.config.value}
-                                    onPaste={(event) => { if (event.key === "Enter" || !constantValues.NO_SPECIAL_CHARS.test(event.clipboardData.getData('text'))) { event.preventDefault(); } }}
-                                    keyPress={(event) => { if (event.key === "Enter" || !constantValues.NO_SPECIAL_CHARS.test(event.key)) { event.preventDefault(); } }}
-                                    changed={(event) => this.inputChangedHandler(event, formElement.config.fieldFormat, formElement.id)} />
-                            </div>
-                            <p id={formElement.config.elementConfig['aria-describedby']} className="text-color-grey caption-two text-right">{formElement.config.characterCountLabel}
-                                <span id="characterCount">{formElement.config.value.length}</span>
-                                <span>{formElement.config.characterLimitGiftMessage ? `/${formElement.config.characterLimitGiftMessage}` : null}</span>
-                                {parseInt(formElement.config.value.length,10) === parseInt(maxChar,10)?<span className='visually-hidden'>Reached maximum character limit</span>:''}
-                            </p>
-                        </div>
-                    </div>
-                )
-            } else if ("single" === formElement.config.fieldFormat && "text" === formElement.config.fieldType && !formElement.config.isHidden && this.props.isLoggedIn === formElement.config.isLoggedInUserField) {
-                FormDefinitionElem = (
-                    /\b(v1)\b/i.test(this.props.componentVersion) ?
-                        <p className="legal text-color-grey pb-10" tabIndex="0" aria-label={formElement.config.value} key={formElement.id}>
-                            <Icon className="error-black" extraClass="pr-1" />
-                            {formElement.config.value}
-                        </p> :
-                        <p className="legal text-color-grey pb-10" key={formElement.id}>
-                            <Icon className="error-black" extraClass="pr-1" />
-                            {formElement.config.value}
-                        </p>
-                )
-            } else if ("single" === formElement.config.fieldFormat && "reCaptcha" === formElement.config.fieldType && !formElement.config.isHidden) {
-                FormDefinitionElem = (
-                    <div className={formElement.config.isHidden ? "d-none" : "mb-15 captcha-wrapper text-center"} id="recaptcha-spa-impl" key={formElement.id}>
-                        <ReCAPTCHA
-                            sitekey={process.env.NODE_ENV === 'development' ? "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI" : this.props.scriptingJson[constantValues.RECAPTCHA_SITE_KEY]}
-                            ref={this.props.captchaRef}
-                            onChange={(recaptchaToken) => this.props.onInitDetailUpdateInMyAccountStore(recaptchaToken, "recaptchaToken")} />
-                    </div>
-                )
-            } else if ("single" === formElement.config.fieldFormat && "dropdown" === formElement.config.fieldType) {
-                FormDefinitionElem = (
-                    <FormDropDown
-                        key={formElement.id}
-                        formElement={formElement}
-                        inputChangedHandler={this.inputChangedHandler}
-                        formType={this.state.formType} />
-                )
-            } else if ("single" === formElement.config.fieldFormat && "label" === formElement.config.fieldType && !formElement.config.isHidden) {
-                FormDefinitionElem = (
-                    <p className={formElement.config.notificationClass} key={formElement.id}>
-                        {formElement.config.value}
-                    </p>
-                )
+{
+    "addressLine1": {
+        "fieldFormat": "single",
+        "fieldType": "textbox",
+        "elementType": "input",
+        "elementConfig": {
+            "type": "text",
+            "id": "customerAddress",
+            "name": "Customer Address",
+            "className": "form-control",
+            "autoComplete": "off",
+            "aria-required": "true",
+            "aria-describedby": "addressLine1ShippingInfoerror",
+            "maxLength": "30",
+            "aria-label": "Enter Address:"
+        },
+        "value": "",
+        "label": "Address",
+        "validation": {
+            "required": true,
+            "maxLength": "30",
+            "isAlphabetical": false
+        },
+        "errorDescriptions": {
+            "isMandatoryError": "Address is required.",
+            "isLimitExceedError": "The value entered in the address field is too long."
+        },
+        "isValid": false,
+        "touched": false
+    },
+    "addressLine2": {
+        "fieldFormat": "single",
+        "fieldType": "textbox",
+        "elementType": "input",
+        "elementConfig": {
+            "type": "text",
+            "id": "customerAdd2",
+            "name": "Customer Address 2",
+            "className": "form-control",
+            "autoComplete": "off",
+            "aria-describedby": "Apt, Suite, Unit, Floor (Optional)",
+            "maxLength": "25",
+            "aria-label": "Enter Apt, Unit, Floor: "
+        },
+        "value": "",
+        "label": "Apt, Suite, Unit, Floor (Optional)",
+        "validation": {
+            "required": false,
+            "maxLength": "25",
+            "isAlphabetical": false
+        },
+        "isValid": true,
+        "touched": false
+    },
+    "country": {
+        "fieldFormat": "single",
+        "fieldType": "textbox",
+        "elementType": "input",
+        "elementConfig": {
+            "type": "text",
+            "id": "customerCountry",
+            "name": "Customer Country",
+            "className": "form-control",
+            "autoComplete": "off",
+            "aria-readonly": "true",
+            "aria-describedby": "Country",
+            "aria-label": "Enter Country*"
+        },
+        "value": "US",
+        "displayValue": "USA",
+        "label": "Country",
+        "validation": {
+            "required": true
+        },
+        "isValid": true,
+        "isDisabled": true,
+        "touched": false,
+        "isCountryField": true
+    },
+    "zip_city": {
+        "fieldFormat": "multiple",
+        "fieldType": "textbox",
+        "zipCode": {
+            "elementType": "input",
+            "elementConfig": {
+                "type": "text",
+                "id": "customerZip",
+                "name": "Customer Zip",
+                "className": "form-control",
+                "autoComplete": "off",
+                "aria-required": "true",
+                "aria-describedby": "ZipCode",
+                "aria-label": "Enter Zip Code:"
+            },
+            "value": "",
+            "label": "Zip Code*",
+            "validation": {
+                "required": true,
+                "maxLength": 5,
+                "minLength": 5,
+                "isAddressReq": true
+            },
+            "errorDescriptions": {
+                "isMandatoryError": "Zip Code is required.",
+                "isLimitExceedError": "The value entered in the zip code field is too long.",
+                "isLimitShortError": "Minimum 5 digits"
+            },
+            "isFirstField": true,
+            "isCheckoutShippingZip": true,
+            "isValid": false,
+            "touched": false,
+            "isZipField": true,
+            "isTFLRP": true,
+            "errorType": "isMandatoryError"
+        },
+        "city": {
+            "elementType": "input",
+            "elementConfig": {
+                "type": "text",
+                "id": "customerCity",
+                "name": "Customer City",
+                "className": "form-control",
+                "autoComplete": "off",
+                "aria-required": "true",
+                "aria-describedby": "City",
+                "aria-label": "Enter City*"
+            },
+            "value": "",
+            "label": "City",
+            "validation": {
+                "required": true,
+                "maxLength": 30,
+                "isAlphabetical": false
+            },
+            "errorDescriptions": {
+                "isMandatoryError": "City is required.",
+                "isLimitExceedError": "The value entered in the city field is too long."
+            },
+            "isCityField": true,
+            "isValid": false,
+            "touched": false,
+            "errorType": null
+        }
+    },
+    "stateOrProvince": {
+        "fieldFormat": "single",
+        "id": "shippingStateOrProvince",
+        "fieldType": "dropdown",
+        "elementType": "li",
+        "elementConfig": {
+            "className": "option",
+            "tabIndex": "-1"
+        },
+        "options": [
+            {
+                "displayValue": "Alabama",
+                "value": "AL"
+            },
+            {
+                "displayValue": "Alaska",
+                "value": "AK"
+            },
+            {
+                "displayValue": "Arizona",
+                "value": "AZ"
+            },
+            {
+                "displayValue": "Arkansas",
+                "value": "AR"
+            },
+            {
+                "displayValue": "California",
+                "value": "CA"
+            },
+            {
+                "displayValue": "Colorado",
+                "value": "CO"
+            },
+            {
+                "displayValue": "Connecticut",
+                "value": "CT"
+            },
+            {
+                "displayValue": "Delaware",
+                "value": "DE"
+            },
+            {
+                "displayValue": "Florida",
+                "value": "FL"
+            },
+            {
+                "displayValue": "Georgia",
+                "value": "GA"
+            },
+            {
+                "displayValue": "Hawaii",
+                "value": "HI"
+            },
+            {
+                "displayValue": "Idaho",
+                "value": "ID"
+            },
+            {
+                "displayValue": "Illinois",
+                "value": "IL"
+            },
+            {
+                "displayValue": "Indiana",
+                "value": "IN"
+            },
+            {
+                "displayValue": "Iowa",
+                "value": "IA"
+            },
+            {
+                "displayValue": "Kansas",
+                "value": "KS"
+            },
+            {
+                "displayValue": "Kentucky",
+                "value": "KY"
+            },
+            {
+                "displayValue": "Louisiana",
+                "value": "LA"
+            },
+            {
+                "displayValue": "Maine",
+                "value": "ME"
+            },
+            {
+                "displayValue": "Maryland",
+                "value": "MD"
+            },
+            {
+                "displayValue": "Massachusetts",
+                "value": "MA"
+            },
+            {
+                "displayValue": "Michigan",
+                "value": "MI"
+            },
+            {
+                "displayValue": "Minnesota",
+                "value": "MN"
+            },
+            {
+                "displayValue": "Mississippi",
+                "value": "MS"
+            },
+            {
+                "displayValue": "Missouri",
+                "value": "MO"
+            },
+            {
+                "displayValue": "Montana",
+                "value": "MT"
+            },
+            {
+                "displayValue": "Nebraska",
+                "value": "NE"
+            },
+            {
+                "displayValue": "Nevada",
+                "value": "NV"
+            },
+            {
+                "displayValue": "NewHampshire",
+                "value": "NH"
+            },
+            {
+                "displayValue": "NewJersey",
+                "value": "NJ"
+            },
+            {
+                "displayValue": "NewMexico",
+                "value": "NM"
+            },
+            {
+                "displayValue": "NewYork",
+                "value": "NY"
+            },
+            {
+                "displayValue": "NorthCarolina",
+                "value": "NC"
+            },
+            {
+                "displayValue": "NorthDakota",
+                "value": "ND"
+            },
+            {
+                "displayValue": "Ohio",
+                "value": "OH"
+            },
+            {
+                "displayValue": "Oklahoma",
+                "value": "OK"
+            },
+            {
+                "displayValue": "Oregon",
+                "value": "OR"
+            },
+            {
+                "displayValue": "Pennsylvania",
+                "value": "PA"
+            },
+            {
+                "displayValue": "RhodeIsland",
+                "value": "RI"
+            },
+            {
+                "displayValue": "SouthCarolina",
+                "value": "SC"
+            },
+            {
+                "displayValue": "SouthDakota",
+                "value": "SD"
+            },
+            {
+                "displayValue": "Tennessee",
+                "value": "TN"
+            },
+            {
+                "displayValue": "Texas",
+                "value": "TX"
+            },
+            {
+                "displayValue": "Utah",
+                "value": "UT"
+            },
+            {
+                "displayValue": "Vermont",
+                "value": "VT"
+            },
+            {
+                "displayValue": "Virginia",
+                "value": "VA"
+            },
+            {
+                "displayValue": "Washington",
+                "value": "WA"
+            },
+            {
+                "displayValue": "WestVirginia",
+                "value": "WV"
+            },
+            {
+                "displayValue": "Wisconsin",
+                "value": "WI"
+            },
+            {
+                "displayValue": "Wyoming",
+                "value": "WY"
             }
-                else if("single"===formElement.config.fieldFormat&&"toggle"===formElement.config.fieldType&&!formElement.config.isHidden&&
-                (_.isUndefined(formElement.config.isLoggedInUserField)||this.props.isLoggedIn===formElement.config.isLoggedInUserField)&&(this?.props?.state?.formDefinition?.formType !== "ModifySavedCreditCard") && (this.props?.accountProfileData?.accountLevelAutoRefillStatus === true || !_.isEmpty(this.props?.accountProfileData?.autoRefill)) && sessionStorage.editPayment !== "true" &&(!window.location.pathname.includes("manage-auto-refill"))){
-                    if(this.props.accountProfileData?.activeLines>1){
-                        FormDefinitionElem=(
-                            <div key={formElement.id}>
-                                <p className="caption-one-info text-color-grey pb-10"><Icon className="error-black" extraClass="pr-1" />
-                                    {this.props.scriptingJson[constantValues._LBL_AUTO_REFILL_ENROLLMENT_PAYMENT_INFO]}
-                                </p>
-                            </div>
-                        )
-                    }else{
-                    FormDefinitionElem = (
-                        <div className ="default-switch" key={formElement.id}>
-                            <div className="row">
-                            <div className="col-7">
-                                <p className="caption-one-normal pt-2">{formElement.config.label}</p>
-                            </div>
-                            <div className="col-5 text-right">
-                                <div className="custom-control custom-switch p-0">
-                                    <FormElements
-                                        valueType={formElement.id}
-                                        elementType={formElement.config.elementType}
-                                        elementConfig={formElement.config.elementConfig}
-                                        label={formElement.config.label}
-                                        valid={formElement.config.isValid}
-                                        value={formElement.id}
-                                        changed={() => {}}
-                                        isChecked={formElement.config.touched}/>
-                                    <label
-                                        className="custom-control-label"
-                                        htmlFor={formElement.config.elementConfig.id}
-                                        onClick={(event) => this.inputChangedHandler(event,formElement.config.fieldFormat,formElement.id)}></label>
-                                </div>
-                            </div>
-                            </div>
-                        </div>
-                    )
-                    }
-                }
-                //isMultiline
-            return FormDefinitionElem;
-        });
-
-        return (
-            <form autoComplete="off" {...this.props?.state?.alertRoleRequired && {'role' : 'alert'}}  className={`forms-row ${this.props.formClassName ?? ''} ${formClass}`}>
-                {formStructure}
-                {this.props.addFormErrorsBtnAccessibility ? 
-                    <p className="d-none" id={`${this.state.formType}BtnErrors`}>{!_.isEmpty(ariaDescribedByArr) ? ariaDescribedByArr.join(" ") : ""}</p>
-                : null}
-            </form>
-        )
+        ],
+        "validation": {
+            "required": true
+        },
+        "errorDescriptions": {
+            "isMandatoryError": "State is required."
+        },
+        "isStateField": true,
+        "isTFLRP": true,
+        "accessible": true,
+        "displayValue": "",
+        "value": "",
+        "label": "State",
+        "isValid": false,
+        "label2": "Select line for details",
+        "touched": false,
+        "errorType": null
     }
 }
-
-Forms.propTypes = {
-    state: PropTypes.object,
-    isLoggedIn: PropTypes.bool,
-    scriptingJson: PropTypes.object,
-    creditCardVendors: PropTypes.array,
-    componentVersion: PropTypes.string,
-    mapQuestStateName: PropTypes.string,
-    mapQuestCityName: PropTypes.string,
-    mapQuestCountryName: PropTypes.string,
-    mapQuestFormType: PropTypes.string,
-    componentClassName: PropTypes.string,
-    mapQuestErrorMessage: PropTypes.string,
-    dropDownFormFieldData: PropTypes.object,
-    updateCreditCardVendorIconHandler: PropTypes.func,
-    onInitFormDetailUpdateInStore: PropTypes.func,
-};
-
-const mapStateToProps = state => {
-    return {
-        isLoggedIn: state.authDetail.isLoggedIn,
-        creditCardVendors: state.checkoutDetail.creditCardVendors,
-        dropDownFormFieldData: state.checkoutDetail.dropDownFormFieldData,
-        mapQuestStateName: state.checkoutDetail.mapQuestData.stateName,
-        mapQuestCityName: state.checkoutDetail.mapQuestData.cityName,
-        mapQuestCountryName: state.checkoutDetail.mapQuestData.countryName,
-        mapQuestFormType: state.checkoutDetail.mapQuestData.formType,
-        dropDownFormFieldAccess: state.checkoutDetail.dropDownFormFieldAccess,
-        mapQuestErrorMessage: state.checkoutDetail.mapQuestData.mapQuestApiErrorMessage,
-        mapQuestLoading: state.checkoutDetail.mapQuestLoading,
-        accountProfileData: state.myAccount.accountProfileData,
-        getMarketSegmentError : state.cartDetail.getMarketSegmentError,
-        editShippingMarketSegmentError: state.cartDetail.editShippingMarketSegmentError
-    }
-}
-
-const mapDispatchToProps = dispatch => {
-    return {
-        onInitFormDetailUpdateInStore: (formDetailsJson, formName) => dispatch(actions.initFormDetailUpdateInStore(formDetailsJson, formName)),
-        onInitUpdateCityStateInStore: (mapQuestApiUrl, formType) => dispatch(actions.initUpdateCityState(mapQuestApiUrl, formType)),
-        onInitDetailUpdateInMyAccountStore: (detailsJson, itemName, isCommunicationPreference) => dispatch(actions.initDetailUpdateInMyAccountStore(detailsJson, itemName, isCommunicationPreference)),
-        resetMarketSegmentError : () => dispatch(actions.resetMarketSegmentError()),
-        editShippingMarketSegmentErrorHandler: (msg) => dispatch(actions.editShippingMarketSegmentErrorHandler(msg))
-    }
-}
-
-export default connect(mapStateToProps, mapDispatchToProps)(Forms);
