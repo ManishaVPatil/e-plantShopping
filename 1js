@@ -1,0 +1,517 @@
+import React, { Component } from 'react';
+import { connect } from 'react-redux';
+import PropTypes from 'prop-types';
+import _ from 'underscore';
+import valid from 'card-validator';
+import ReCAPTCHA from 'react-google-recaptcha';
+import FormElements from '../FormElements/FormElements';
+import * as constantValues from '../../../store/constants/config';
+import * as actions from '../../../store/actions/index';
+import * as checkoutDetailDataUtil from '../../../utils/CheckoutDetailDataUtil/CheckoutDetailDataUtil';
+import { getStateListFromCountryStateMapping, findRequestedObject } from '../../../utils/MyAccountDataUtil/MyAccountDataUtil';
+import Icon from '../Icon/Icon';
+import * as myAccountDataUtil from '../../../utils/MyAccountDataUtil/MyAccountDataUtil';
+import FormDropDown from '../FormElements/FormDropDown';
+import Tooltip from '../Tooltip/Tooltip';
+
+class Forms extends Component {
+
+
+    constructor(props) {
+        super(props);
+        this.state = {
+            ...props.state,
+            emailAlreadyExist : true
+        };
+        this.selectedSpanRef = React.createRef();
+    }
+
+    /*This function is used to let React know if a component’s output is not affected by the current change in state or props
+    * This method is invoked before rendering when new props or state are being received 
+    * Ideally setState shouldn't be executed in this lifecycle function.
+    */
+    shouldComponentUpdate(nextProps, nextState) {
+        /* Updating the state to update the form data with the provided formDefinition on user based action.
+         * We are validating the below mention condition to ensure it is executed only on particular user action */
+        if (_.isBoolean(nextProps.updateFormState) && this.props.updateFormState !== nextProps.updateFormState) {
+            const updatedFormDefinition = this.getValidatedFormDefinition(nextProps.formDefinition);
+            const _enteredValue = !_.isEmpty(updatedFormDefinition) && !_.isObject(updatedFormDefinition) && !_.isEmpty(updatedFormDefinition.cardNumber) && _.isNumber(updatedFormDefinition.cardNumber.value) ? updatedFormDefinition.cardNumber.value : null;
+            const creditCardBrandName = checkoutDetailDataUtil.getCreditCardBrandName(_enteredValue);
+            /* Update the credit card CVV limit */
+            if (!_.isNull(creditCardBrandName)) {
+                this.updateCreditCardCVVLimit(creditCardBrandName, updatedFormDefinition, true);
+            }
+            /* set updated definition of form to redux */
+            this.props.onInitFormDetailUpdateInStore(this.getUpdatedFormFieldValues(updatedFormDefinition), this.state.formType, false);
+            /* set state to update form */
+            this.setState({
+                formDefinition: updatedFormDefinition
+            });
+        }
+        const dropDownFormFieldAccess = nextProps.dropDownFormFieldAccess, prevDropDownFormFieldAccess = this.props.dropDownFormFieldAccess;
+        if (!_.isEmpty(dropDownFormFieldAccess) && !_.isEmpty(dropDownFormFieldAccess.searchUserInput) && /ARROWUP|ARROWDOWN/i.test(dropDownFormFieldAccess.searchUserInput)) {
+            let dataIndex = 0, dropDownFormFieldAccessElements = document.querySelectorAll(`[id^=${dropDownFormFieldAccess.elementIdentifier}ListElement]`);
+            dropDownFormFieldAccessElements.forEach(elem => {
+                if (_.indexOf(elem.classList, "current") >= 0) {
+                    dataIndex = Number(elem.getAttribute("data-index"));
+                    if (dataIndex < (dropDownFormFieldAccessElements.length - 1)) {
+                        setTimeout(function () {
+                            elem.classList.remove("current");
+                        }, 150);
+                    }
+                }
+            });
+            if (_.isEmpty(prevDropDownFormFieldAccess) && /ARROWUP|ARROWDOWN/i.test(dropDownFormFieldAccess.searchUserInput)) {
+                if (_.isElement(document.getElementById(`${dropDownFormFieldAccess.elementIdentifier}ListElement${dataIndex}`))) {
+                    document.getElementById(`${dropDownFormFieldAccess.elementIdentifier}ListElement${dataIndex}`).focus();
+                    setTimeout(function () {
+                        document.getElementById(`${dropDownFormFieldAccess.elementIdentifier}ListElement${dataIndex}`).classList.add("current");
+                    }, 100);
+                }
+            } else if (!_.isEmpty(prevDropDownFormFieldAccess) && /ARROWDOWN/i.test(dropDownFormFieldAccess.searchUserInput)) {
+                if (_.isElement(document.getElementById(`${dropDownFormFieldAccess.elementIdentifier}ListElement${dataIndex + 1}`))) {
+                    document.getElementById(`${dropDownFormFieldAccess.elementIdentifier}ListElement${dataIndex + 1}`).focus();
+                    setTimeout(function () {
+                        document.getElementById(`${dropDownFormFieldAccess.elementIdentifier}ListElement${dataIndex + 1}`).classList.add("current");
+                    }, 100);
+                }
+            } else if (!_.isEmpty(prevDropDownFormFieldAccess) && /ARROWUP/i.test(dropDownFormFieldAccess.searchUserInput)) {
+                if (document.getElementById(`${dropDownFormFieldAccess.elementIdentifier}ListElement${dataIndex - 1}`)) {
+                    document.getElementById(`${dropDownFormFieldAccess.elementIdentifier}ListElement${dataIndex - 1}`).focus();
+                    setTimeout(function () {
+                        document.getElementById(`${dropDownFormFieldAccess.elementIdentifier}ListElement${dataIndex - 1}`).classList.add("current");
+                    }, 100);
+                }
+                if (dataIndex === (dropDownFormFieldAccessElements.length - 1) && _.isElement(document.getElementById(`${dropDownFormFieldAccess.elementIdentifier}ListElement${dataIndex}`))) {
+                    document.getElementById(`${dropDownFormFieldAccess.elementIdentifier}ListElement${dataIndex}`).classList.remove("current");
+                }
+            }
+        }
+        return true;
+    }
+
+    componentDidUpdate(prevProps, prevState) {
+        const dropDownFormFieldData = this.props.dropDownFormFieldData, prevDropDownFormFieldData = prevProps.dropDownFormFieldData;
+        if (!_.isEmpty(dropDownFormFieldData) && !_.isEmpty(dropDownFormFieldData.searchUserInput) && /^[a-zA-Z]$/.test(dropDownFormFieldData.searchUserInput)) {
+            const dropDownOptions = document.getElementById(dropDownFormFieldData.elementIdentifier);
+            if (!_.isNull(dropDownOptions)) {
+                const dropdownOptionsList = [...dropDownOptions.querySelectorAll('.option')];
+                let dropdownElement;
+                let shouldScroll = false;
+                for (let i = 0; i < dropdownOptionsList.length; i++) {
+                    dropdownElement = dropdownOptionsList[i];
+                    if (!_.isEmpty(dropdownElement.textContent) && dropdownElement.textContent[0].toUpperCase() === dropDownFormFieldData.searchUserInput) {
+                        shouldScroll = true;
+                        break;
+                    }
+                }
+                if (_.isEmpty(prevDropDownFormFieldData) || (!_.isEmpty(prevDropDownFormFieldData) && prevDropDownFormFieldData.searchUserInput !== dropDownFormFieldData.searchUserInput && shouldScroll)) {
+                    dropdownElement.focus();
+                }
+            }
+        }
+        if (this.state.formType=== constantValues.FORM_TYPE_REVIEW_ORDER && prevProps.isGiftMessageEnabled === false && this.props.isGiftMessageEnabled === true && document.querySelector(".gift-info-container")) {
+            setTimeout(() => document.querySelector(".gift-info-container").focus(), 500);
+        }
+    }
+
+
+    /**
+     * This function is used to provide the state field definition based on the provided parameters
+     * @param {STRING} {
+     *      @type contains either `textbox` or `dropdown`
+     *      @countryCode contains the country code for which state mapping is required
+     * }
+     * @returns {*|JSON}
+     **/
+    getNewStateFieldDefinition = (type, countryCode) => {
+        if ("textbox" === type) {
+            return {
+                fieldFormat: 'single',
+                fieldType: 'textbox',
+                elementType: 'input',
+                elementConfig: {
+                    type: 'text',
+                    id: 'customerBillingState',
+                    name: 'Customer Billing State',
+                    className: 'form-control',
+                    autoComplete: "off",
+                    'aria-describedby': 'State'
+                },
+                isStateField: true,
+                displayValue: '',
+                value: '',
+                label: this.props.scriptingJson[constantValues._LBL_FORM_STATE],
+                validation: {
+                    required: true,
+                    maxLength: 40,
+                    isAlphabetical: false
+                },
+                errorDescriptions: {
+                    isMandatoryError: this.props.scriptingJson[constantValues._ERR_MANDATORY_STATE],
+                    isLimitExceedError: this.props.scriptingJson[constantValues._ERR_LIMIT_EXCEED_STATE]
+                },
+                isValid: false,
+                touched: false
+            }
+        } else if ("dropdown" === type) {
+            return {
+                fieldFormat: 'single',
+                fieldType: 'dropdown',
+                elementType: 'li',
+                elementConfig: {
+                    className: 'option'
+                },
+                options: getStateListFromCountryStateMapping(this.props.scriptingJson?.countryStateMapping, countryCode),
+                validation: {
+                    required: true
+                },
+                errorDescriptions: {
+                    isMandatoryError: this.props.scriptingJson[constantValues._ERR_MANDATORY_STATE]
+                },
+                isStateField: true,
+                displayValue: '',
+                value: '',
+                label: this.props.scriptingJson[constantValues._LBL_FORM_STATE],
+                isValid: false
+            }
+        }
+    }
+
+    /**
+     * This function is used to store the Character provided by user in the dropdown field
+     * @param {STRING} {
+     *      @elementIdentifier indicates the name of the field with which user interacted
+     * }
+     * @returns {*|null}
+     **/
+    dropDownKeyUpHandler = (event, elementIdentifier) => {
+        if (/\b(v1)\b/i.test(this.props.componentVersion) && this.props?.componentClassName?.includes("disabledContent")) return;
+        const dropDownFormFieldData = this.props.dropDownFormFieldData;
+        if (!_.isEmpty(event) && !_.isEmpty(event.key)) {
+            if ((_.isEmpty(dropDownFormFieldData) || (!_.isEmpty(dropDownFormFieldData) && event.key.toUpperCase() !== dropDownFormFieldData.searchUserInput)) && !/ARROWUP|ARROWDOWN/i.test(event.key)) {
+                this.props.onInitFormDetailUpdateInStore({ "searchUserInput": event.key.toUpperCase(), "elementIdentifier": elementIdentifier + this.state.formType }, "dropDownFormFieldData", false);
+            }
+            if (/ARROWUP|ARROWDOWN/i.test(event.key)) {
+                this.props.onInitFormDetailUpdateInStore({ "searchUserInput": event.key.toUpperCase(), "elementIdentifier": elementIdentifier + this.state.formType, "updateIndex": _.random(0, 10e8), "elementName": elementIdentifier }, "dropDownFormFieldAccess", false);
+            }
+            if (/TAB|ESCAPE/i.test(event.key) && _.isElement(document.getElementById(`${elementIdentifier}${this.state.formType}Label`))) {
+                if (_.isElement(document.getElementById(`${elementIdentifier}Field`)) && /true/i.test(document.getElementById(`${elementIdentifier}${this.state.formType}Label`).getAttribute("aria-expanded"))) {
+                    document.getElementById(`${elementIdentifier}Field`).click();
+                }
+                if (/true/i.test(document.getElementById(`${elementIdentifier}${this.state.formType}Label`).getAttribute("aria-expanded"))) {
+                    document.getElementById(`${elementIdentifier}${this.state.formType}Label`).className = "field pl-0 pr-0 alternate dropdown-label bg-soft-grey";
+                    document.getElementById(`${elementIdentifier}${this.state.formType}Label`).setAttribute("aria-expanded", "false");
+                    document.getElementById(`${elementIdentifier}${this.state.formType}Label`).focus();
+                }
+            }
+        }
+    }
+
+    /**
+     * This function is used to enable focusIn and focusOut on the dropdown form fields
+     * @param {STRING} {
+     *      @elementFieldFormat indicates the type of form field i.e., `single` or `multiple`
+     *      @elementIdentifier indicates the name of the field with which user interacted
+     * }
+     * @returns {*|null}
+     **/
+    dropdownLabelVisibilityHandler = (elementFieldFormat, elementIdentifier) => {
+        if (/\b(v1)\b/i.test(this.props.componentVersion) && this.props?.componentClassName?.includes("disabledContent")) return;
+        /* close country dropdown on click of state dropdown */
+        if (elementIdentifier === "stateOrProvince" && !_.isEmpty(document.getElementById("country" + this.state.formType + "Label"))) {
+            document.getElementById("country" + this.state.formType + "Label").classList.remove("focused");
+        }
+        const dropDownLabelElem = document.getElementById(elementIdentifier + this.state.formType + "Label");
+        const dropDownSelectedSpanElem = document.getElementById(elementIdentifier + this.state.formType + "SelectedSpan");
+        const dropDownListElement = document.querySelectorAll(`li[data-id=${elementIdentifier + this.state.formType}ListElement]`);
+        if (!_.isNull(dropDownLabelElem)) {
+            if (dropDownLabelElem.className.search(/focused/) >= 0) {
+                dropDownLabelElem.className = "field pl-0 pr-0 alternate dropdown-label bg-soft-grey";
+                if (!_.isEmpty(dropDownListElement)) {
+                    dropDownListElement.forEach(item => {
+                        item.setAttribute("tabIndex", "-1");
+                    })
+                }
+                if (_.isElement(document.getElementById(`${elementIdentifier}${this.state.formType}`))) {
+                    document.getElementById(`${elementIdentifier}${this.state.formType}`).setAttribute("aria-hidden", "true");
+                    if (_.isElement(document.getElementById(`${elementIdentifier}${this.state.formType}Label`))) {
+                        document.getElementById(`${elementIdentifier}${this.state.formType}Label`).setAttribute("aria-expanded", "false");
+                    }
+                }
+                /* execute the validation when focusOut happens on the dropdown field */
+                if (!dropDownSelectedSpanElem.innerText) {
+                    this.focusOutValidationHandler("", elementFieldFormat, elementIdentifier);
+                }
+            } else {
+                dropDownLabelElem.className = "field pl-0 pr-0 alternate dropdown-label bg-soft-grey focused";
+                dropDownListElement[0].focus();
+                if (!_.isEmpty(dropDownListElement)) {
+                    dropDownListElement.forEach(item => {
+                        item.setAttribute("tabIndex", "0")
+                    })
+                }
+                if (_.isElement(document.getElementById(`${elementIdentifier}${this.state.formType}`))) {
+                    document.getElementById(`${elementIdentifier}${this.state.formType}`).setAttribute("aria-hidden", "false");
+                    if (_.isElement(document.getElementById(`${elementIdentifier}${this.state.formType}Label`)) && !this.props?.componentClassName?.includes("disabledContent")) {
+                        document.getElementById(`${elementIdentifier}${this.state.formType}Label`).setAttribute("aria-expanded", "true");
+                    }
+                }
+            }
+        }
+        document.getElementById(elementIdentifier + this.state.formType).focus();
+    }
+
+    /**
+     * This function is used to validate the value provided as an input to the HTML form fields
+     * @param {STRING|JSON} {
+     *      @value contains the value of the interacted HTML form field
+     *      @validations contains the validation parameter of the interacted HTML form field
+     *      @emptyCheckNotRequired flag to indicate if empty value check is required
+     * }
+     * @returns {*|JSON}
+     **/
+    checkFormInputs = (value, validations, emptyCheckNotRequired, elementId) => {
+        let validationStatus = {
+            validity: true,
+            errorType: null
+        };
+        if (_.isEmpty(validations) || (!_.isEmpty(validations) && !validations.required)) {
+            if (validations?.isCustomValidationRequired) {
+                validationStatus.validity = validations.customValidation(value, elementId);
+                if (!validationStatus.validity) {
+                    validationStatus.errorType = "isInvalidError";
+                }
+            }
+            if (validations?.waiveValidation) {
+                validationStatus.validity = false;
+            }
+            if (validations?.addressDigitsCheckFail) {
+                validationStatus.validity = false;
+                validationStatus.errorType = "isDigitLimitExceedError";
+            } 
+            return validationStatus;
+        } else {
+            if (_.isEmpty(value) && emptyCheckNotRequired) {
+                validationStatus.validity = false;
+                validationStatus.errorType = null;
+            }  else if (_.isEmpty(value) && validations.ignoreEmptyValueEmail && validations.emptyCheckNotRequired) {
+                validationStatus.validity = false;
+                validationStatus.errorType = null;
+            } else if (_.isEmpty(value)) {
+                validationStatus.validity = false;
+                validationStatus.errorType = "isMandatoryError";
+                if(validations?.inspicioField){
+                    validationStatus.validity = false;
+                    validationStatus.errorType = null;
+                }
+            } else {
+                if (validations.maxLength && value.length > validations.maxLength) {
+                    validationStatus.validity = false;
+                    validationStatus.errorType = "isLimitExceedError";
+                } else if (validations.minLength && value.length < validations.minLength) {
+                    validationStatus.validity = false;
+                    validationStatus.errorType = "isLimitShortError";
+                }
+                else if (validations.customValidation) {
+                    validationStatus.validity = validations.customValidation(value, elementId);
+                    if (!validationStatus.validity) {
+                        validationStatus.errorType = "isInvalidError";
+                    }
+                }
+                else if (validations.isAlphabetical && !constantValues.IS_ALPHABETICAL_REGEX.test(value)) {
+                    validationStatus.validity = false;
+                    validationStatus.errorType = "isInvalidError";
+                } else if (validations.isEmail && validations.isNewEmail && !validations.isMasked && !constantValues.IS_EMAIL_SIGNUP_REGEX.test(value)) {
+                    validationStatus.validity = false;
+                    validationStatus.errorType = "isInvalidError";
+                }else if ((validations.isEmailExist && this.state.emailAlreadyExist)  || (validations.duplicateCreateAccountEmailIDs?.length && validations.duplicateCreateAccountEmailIDs.includes(value))){
+                    validationStatus.validity = false;
+                    validationStatus.errorType = "isEmailAlreadyExist";
+                } else if (validations.isPassword&&!constantValues.IS_PASSWORD_REGEX.test(value)) {
+                    validationStatus.validity = false;
+                    validationStatus.errorType = "isInvalidError";
+                }else if(validations.isEmail&&!constantValues.IS_EMAIL_REGEX.test(value)){
+                    validationStatus.validity = false;
+                    validationStatus.errorType = "isInvalidError";
+                }else if(validations.isEmail&& validations.isValidRealEmail==false){
+                    validationStatus.validity = false;
+                    validationStatus.errorType = "validRealEmailError";
+                } else if (validations.isCreditCard) {
+                    const cardNumberValidation = valid.number(value, { luhnValidateUnionPay: true });
+                    if (!cardNumberValidation.isValid) {
+                        validationStatus.validity = false;
+                        validationStatus.errorType = "isInvalidError";
+                    } else if (!_.isNull(cardNumberValidation.card) && cardNumberValidation.card.type.search(new RegExp(this.props.scriptingJson[constantValues.ALLOWED_CREDIT_CARD_REGEX], "i")) <= -1) {
+                        validationStatus.validity = false;
+                        validationStatus.errorType = "isDifferentCardError";
+                    }
+                } else if (validations.isAcquisitionCreditCard) {
+                    const cardNumberValidation = valid.number(value, { luhnValidateUnionPay: true });
+                    if (!cardNumberValidation.isValid) {
+                        validationStatus.validity = false;
+                        validationStatus.errorType = "isInvalidError";
+                    } else if (!_.isNull(cardNumberValidation.card) && cardNumberValidation.card.type.search(new RegExp(this.props.scriptingJson[constantValues.ALLOWED_ACQUISITION_CREDIT_CARD_REGEX], "i")) <= -1) {
+                        validationStatus.validity = false;
+                        validationStatus.errorType = "isDifferentCardError";
+                    }
+                } else if (validations.isCardExpiry && !constantValues.IS_CARD_EXPIRY_REGEX.test(value)) {
+                    validationStatus.validity = false;
+                    validationStatus.errorType = "isInvalidError";
+                } else if (validations.isCardExpiry && constantValues.IS_CARD_EXPIRY_REGEX.test(value)) {
+                    const monthYearArr = value.split("/");
+                    const expirationMonthStatus = valid.expirationMonth(monthYearArr[0]);
+                    const expirationYearStatus = valid.expirationYear(monthYearArr[1]);
+                    if (!expirationMonthStatus.isValid) {
+                        validationStatus.validity = false;
+                        validationStatus.errorType = "isInvalidError";
+                    } else if (expirationMonthStatus.isValid && expirationYearStatus.isValid && expirationYearStatus.isCurrentYear && !expirationMonthStatus.isValidForThisYear) {
+                        validationStatus.validity = false;
+                        validationStatus.errorType = "isExpiredError";
+                    } else if (expirationMonthStatus.isValid && !expirationYearStatus.isValid) {
+                        validationStatus.validity = false;
+                        validationStatus.errorType = "isExpiredError";
+                    }
+                } else if (validations.isLoginEmail) {
+                    if (constantValues.IS_MIN_TYPE_REGEX.test(value) || constantValues.IS_SIM_TYPE_REGEX.test(value) || constantValues.IS_ESN_TYPE_REGEX.test(value) || constantValues.IS_EMAIL_REGEX.test(value)) {
+                        validationStatus.validity = true;
+                        validationStatus.errorType = null;
+                    } else {
+                        validationStatus.validity = false;
+                        validationStatus.errorType = "isInvalidError";
+                    }
+                } else if (validations.isMinEmailEsnSimAllowed) {
+                    if (constantValues.IS_US_FORMATTED_MIN_TYPE_REGEX.test(value) || constantValues.IS_SIM_TYPE_REGEX.test(value) || constantValues.IS_ESN_TYPE_REGEX.test(value) || constantValues.IS_EMAIL_REGEX.test(value)) {
+                        validationStatus.validity = true;
+                        validationStatus.errorType = null;
+                    } else {
+                        validationStatus.validity = false;
+                        validationStatus.errorType = "isInvalidError";
+                    }
+                } else if (validations.isMatchPassword) {
+                    if (_.isEmpty(this.props.passwordFieldValue)) {
+                        validationStatus.validity = false;
+                        validationStatus.errorType = "isPasswordMandatoryError";
+                    } else if (this.props.passwordFieldValue !== value) {
+                        validationStatus.validity = false;
+                        validationStatus.errorType = "isInvalidError";
+                    }
+                } else if (validations.isMatchField) {
+                    if (document.getElementById(validations.matchFields[0]).value !== document.getElementById(validations.matchFields[1]).value) {
+                        validationStatus.validity = false;
+                        validationStatus.errorType = "notMatchError";
+                    }
+                }
+                else if ((validations.matchFields && document.getElementById(validations.matchFields[0]).value === document.getElementById(validations.matchFields[1]).value) && 
+                !_.isEmpty(document.getElementById(validations.matchFields[0]).value) && !_.isEmpty(document.getElementById(validations.matchFields[1]).value)) {
+                    validationStatus.validity = true;
+                    validationStatus.errorType = "";
+                }
+                else if (validations.onlyDigitsAllowed && !constantValues.IS_DIGITS_ONLY_REGEX.test(value)) {
+                    validationStatus.validity = false;
+                    validationStatus.errorType = "onlyDigitsAllowedError";
+                }
+                else if (validations.isNotSameAndSequential && (myAccountDataUtil.isSequentialNumber(value) || constantValues.IS_PIN_HAS_SAME_DIGITS_REGEX.test(value))) {
+                    validationStatus.validity = false;
+                    validationStatus.errorType = "isNotSameAndSequentialError";
+                }
+                else if (validations.comparedField) {
+                    if (document.getElementById(validations.matchFields[0]).value !== document.getElementById(validations.matchFields[1]).value && 
+                    !_.isEmpty(document.getElementById(validations.matchFields[0]).value) && !_.isEmpty(document.getElementById(validations.matchFields[1]).value)) {
+                        validationStatus.validity = false;
+                        validationStatus.errorType = "notMatchError";
+                    }
+                    if (document.getElementById(validations.matchFields[0]).value === document.getElementById(validations.matchFields[1]).value && 
+                    _.isEmpty(document.getElementById(validations.matchFields[0]).value) && _.isEmpty(document.getElementById(validations.matchFields[1]).value)) {
+                        validationStatus.validity = true;
+                    }
+                }
+                else if (validations.isNotSameAndSequential && (myAccountDataUtil.isSequentialNumber(value) || constantValues.IS_PIN_HAS_SAME_DIGITS_REGEX.test(value))) {
+                    validationStatus.validity = false;
+                    validationStatus.errorType = "isNotSameAndSequentialError";
+                } else if (validations.onlyDigitsAllowed && !constantValues.IS_DIGITS_ONLY_REGEX.test(value)) {
+                    validationStatus.validity = false;
+                    validationStatus.errorType = "onlyDigitsAllowedError";
+                } else if (validations.isRafCode && !(/^[a-z0-9A-Z]{4}-{1}[a-z0-9A-Z]{4}$/.test(value))) {
+                    validationStatus.validity = false;
+                    validationStatus.errorType = "isInvalidError";
+                } else if (validations.trackingIdValidation && !constantValues.IS_TRACKID_REGEX.test(value)) {
+                    validationStatus.validity = false;
+                    validationStatus.errorType = "isInvalidError";
+                } else if (validations.billingAddressValidation && !(/^([A-Za-z0-9\W]{1,10})\s+(.+)$/.test(value))) {
+                    validationStatus.validity = false;
+                    validationStatus.errorType = "isInvalidError";
+                }
+                else if (validations?.addressDigitsCheckFail) {
+                    validationStatus.validity = false;
+                    validationStatus.errorType = "isDigitLimitExceedError";
+                }
+            }
+            return validationStatus;
+        }
+    }
+
+    /**
+     * This function is used to validate the form definition provided as an input to the form component
+     * @param {STRING|JSON} {
+     *      @formDefinition contains entire form definition which will be used to update form state
+     * }
+     * @returns {*|JSON}
+     **/
+    getValidatedFormDefinition = (formDefinition) => {
+        return !_.isEmpty(formDefinition) && _.isArray(Object.keys(formDefinition)) ?
+            Object.keys(formDefinition).map(key => {
+                return { "value": formDefinition[key], "key": key };
+            }).reduce((result, formElement) => {
+                if ("multiple" === formElement.value.fieldFormat) {
+                    const updatedFormObjectJson = { ...formElement.value };
+                    //eslint-disable-next-line
+                    Object.keys(updatedFormObjectJson).forEach(item => {
+                        if (_.isObject(updatedFormObjectJson[item])) {
+                            const updatedFormElement = {
+                                ...updatedFormObjectJson[item]
+                            }
+                            const validationStatusObj = this.checkFormInputs(updatedFormElement.value, updatedFormElement.validation, true, updatedFormElement?.elementConfig?.id);
+                            updatedFormElement.isValid = validationStatusObj.validity;
+                            updatedFormElement.errorType = validationStatusObj.errorType;
+                            updatedFormObjectJson[item] = updatedFormElement;
+                        }
+                    });
+                    result[formElement.key] = updatedFormObjectJson;
+                } else {
+                    const updatedFormElement = { ...formElement.value };
+                    const validationStatusObj = this.checkFormInputs(updatedFormElement.value, updatedFormElement.validation, true, updatedFormElement?.elementConfig?.id);
+                    updatedFormElement.isValid = validationStatusObj.validity;
+                    updatedFormElement.errorType = validationStatusObj.errorType;
+                    result[formElement.key] = updatedFormElement;
+                }
+                return result;
+            }, {}) : null;
+    }
+
+    /**
+     * This function is used to validate the entire form HTML fields
+     * @param {STRING|JSON} {
+     *      @formObject contains the updated form definition object
+     * }
+     * @returns {*|BOOLEAN}
+     **/
+    checkFormValidity = (formObject) => {
+        let formIsValid = true;
+        for (let key in formObject) {
+            if ("multiple" === formObject[key].fieldFormat) {
+                //eslint-disable-next-line
+                Object.keys(formObject[key]).forEach(item => {
+                    if (_.isObject(formObject[key][item])) {
+                        formIsValid = formObject[key][item].isValid && formIsValid;
+                    }
+                });
+            } else {
+                formIsValid = formObject[key].isValid && formIsValid;
+                if(formObject[key]?.elementConfig?.id==="createAccountEmail" && this.state.formType === constantValues.FORM_TYPE_CREATE_ACCOUNT){
+                    formIsValid = formObject[key]?.validation?.isValidRealEmail;
+                }
+            }
+        }
+        return formIsValid;
+    }
