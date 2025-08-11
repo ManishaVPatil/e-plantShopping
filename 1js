@@ -1,354 +1,6 @@
- /**
-     * This function is used to update the city and state field as per the provided zipcode
-     * @param {NONE}
-     * @returns {*|NONE}
-     **/
-    updateCityStateFormFields = () => {
-        if (this.props.mapQuestFormType === this.state.formType) {
-            const formObject = this.state.formDefinition;
-            for (let key in formObject) {
-                if ("multiple" === formObject[key].fieldFormat) {
-                    //eslint-disable-next-line
-                    Object.keys(formObject[key]).forEach(item => {
-                        if (_.isObject(formObject[key][item])) {
-                            if (formObject[key][item].isCityField) {
-                                if (!_.isEmpty(this.props.mapQuestCityName)) {
-                                    if (formObject[key][item].value !== this.props.mapQuestCityName) {
-                                        this.state.updatedZipCode = this.props.mapQuestCityName;
-                                    }
-                                    formObject[key][item].value = this.props.mapQuestCityName;
-                                    formObject[key][item].isValid = true;
-                                    formObject[key][item].touched = true;
-                                    formObject[key][item].errorType = null;
-
-                                    if(this.props.checkCountryUS && this.props.checkCountryUS==="true" && this.props.mapQuestCountryName){
-                                        if(this.props.mapQuestCountryName!=="US"){
-                                            formObject[key][item].value = "";
-                                            formObject[key][item].isValid = false;
-                                            formObject[key][item].touched = false;
-                                        }
-                                    }
-                                    
-                                } else {
-                                    formObject[key][item].value = "";
-                                    formObject[key][item].isValid = false;
-                                    formObject[key][item].touched = false;
-                                }
-                            }
-                            if (formObject[key][item].isStateField) {
-                                if (!_.isEmpty(this.props.mapQuestStateName)) {
-                                    const mapQuestStateName = this.props.mapQuestStateName;
-                                    if (mapQuestStateName.length > 2 || !_.isArray(formObject[key][item].options)) {
-                                        formObject[key][item].value = mapQuestStateName;
-                                        formObject[key][item].displayValue = mapQuestStateName;
-                                        formObject[key][item].isValid = true;
-                                        formObject[key][item].touched = true;
-                                        formObject[key][item].errorType = null;
-                                        if(this.props.checkCountryUS && this.props.checkCountryUS==="true" && this.props.mapQuestCountryName){
-                                            if(this.props.mapQuestCountryName!=="US"){
-                                                formObject[key][item].value = "";
-                                                formObject[key][item].displayValue = "";
-                                                formObject[key][item].isValid = false;
-                                                formObject[key][item].touched = false;
-                                            }
-                                        }
-                                    } else if (_.isArray(formObject[key][item].options)) {
-                                        formObject[key][item].value = checkoutDetailDataUtil.getDisplayNameAndValue(mapQuestStateName, formObject[key][item].options, "displayValue", "value");
-                                        formObject[key][item].displayValue = checkoutDetailDataUtil.getDisplayNameAndValue(mapQuestStateName, formObject[key][item].options, "value", "displayValue");
-                                        formObject[key][item].isValid = true;
-                                        formObject[key][item].touched = true;
-                                        formObject[key][item].errorType = null;
-                                        if(this.props.checkCountryUS && this.props.checkCountryUS==="true" && this.props.mapQuestCountryName){
-                                            if(this.props.mapQuestCountryName!=="US"){
-                                                formObject[key][item].value = "";
-                                                formObject[key][item].displayValue = "";
-                                                formObject[key][item].isValid = false;
-                                                formObject[key][item].touched = false;
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    formObject[key][item].value = "";
-                                    formObject[key][item].displayValue = "";
-                                    formObject[key][item].isValid = false;
-                                    formObject[key][item].touched = false;
-                                }
-                            }
-                            if (formObject[key][item].isZipField) {
-                                if(this.props.checkCountryUS && this.props.checkCountryUS==="true" && this.props.mapQuestCountryName){
-                                    if(this.props.mapQuestCountryName!=="US"){
-                                        formObject[key][item].value = "";
-                                        formObject[key][item].isValid = false;
-                                        formObject[key][item].touched = false;
-                                    }
-                                }
-                            }
-                        }
-                    });
-                } else {
-                    if (formObject[key].isCityField) {
-                        if (!_.isEmpty(this.props.mapQuestCityName)) {
-                            formObject[key].value = this.props.mapQuestCityName;
-                            formObject[key].isValid = true;
-                            formObject[key].touched = true;
-                            formObject[key].errorType = null;
-
-                            if(this.props.checkCountryUS && this.props.checkCountryUS==="true" && this.props.mapQuestCountryName){
-                                if(this.props.mapQuestCountryName!=="US"){
-                                    formObject[key].value = "";
-                            formObject[key].isValid = false;
-                            formObject[key].touched = false;
-                                }
-                            }
-                        } else {
-                            formObject[key].value = "";
-                            formObject[key].isValid = false;
-                            formObject[key].touched = false;
-                        }
-                    }
-                    if (formObject[key].isStateField) {
-                        if (!_.isEmpty(this.props.mapQuestStateName)) {
-                            const mapQuestStateName = this.props.mapQuestStateName;
-                            if (mapQuestStateName.length > 2 || !_.isArray(formObject[key].options)) {
-                                formObject[key].value = mapQuestStateName;
-                                formObject[key].displayValue = mapQuestStateName;
-                                formObject[key].isValid = true;
-                                formObject[key].touched = true;
-                                formObject[key].errorType = null;
-                                if(this.props.checkCountryUS && this.props.checkCountryUS==="true" && this.props.mapQuestCountryName){
-                                    if(this.props.mapQuestCountryName!=="US"){
-                                        formObject[key].value = "";
-                                        formObject[key].displayValue = "";
-                                        formObject[key].isValid = false;
-                                        formObject[key].touched = false;
-                                    }
-                                }
-                            } else if (_.isArray(formObject[key].options)) {
-                                formObject[key].value = checkoutDetailDataUtil.getDisplayNameAndValue(mapQuestStateName, formObject[key].options, "displayValue", "value");
-                                formObject[key].displayValue = checkoutDetailDataUtil.getDisplayNameAndValue(mapQuestStateName, formObject[key].options, "value", "displayValue");
-                                formObject[key].isValid = true;
-                                formObject[key].touched = true;
-                                formObject[key].errorType = null;
-                                if(this.props.checkCountryUS && this.props.checkCountryUS==="true" && this.props.mapQuestCountryName){
-                                    if(this.props.mapQuestCountryName!=="US"){
-                                        formObject[key].value = "";
-                                        formObject[key].displayValue = "";
-                                        formObject[key].isValid = false;
-                                        formObject[key].touched = false;
-                                    }
-                                }
-                            }
-                        } else {
-                            formObject[key].value = "";
-                            formObject[key].displayValue = "";
-                            formObject[key].isValid = false;
-                            formObject[key].touched = false;
-                        }
-                    }
-                }
-            }
-            /* reset mapQuestData data in store */
-            this.props.onInitFormDetailUpdateInStore({
-                stateName: null,
-                cityName: null,
-                countryName:null,
-                formType: null,
-                mapQuestApiErrorMessage: null
-            }, "mapQuestData", false);
-            /* updated city and state data in respective form object */
-            if (!_.isEmpty(formObject['zip_city']['zipCode']?.value) &&_.isEmpty(formObject['addressLine1']?.value) && formObject['zip_city']['zipCode']?.validation?.isAddressReq) {
-                formObject['addressLine1'].isValid = false;
-                formObject['addressLine1'].errorType = "isMandatoryError";
-            }
-            this.props.onInitFormDetailUpdateInStore(this.getUpdatedFormFieldValues(formObject), this.state.formType, false);
-        }
-    }
 
     /**
-     * This function is used to enable or disable the zipcode length restriction based on selected country
-     * @param {BOOLEAN|OBJECT} {
-     *      @isZipRestrictionRequired contains the boolean value to indicate whether zip length restriction is required.
-     *      @formObject contains the latest form definition object
-     * }
-     * @returns {*|NONE}
-     **/
-    updateZipCodeLengthRestriction = (isZipRestrictionRequired, formObject) => {
-        for (let key in formObject) {
-            if ("multiple" === formObject[key].fieldFormat) {
-                //eslint-disable-next-line
-                Object.keys(formObject[key]).forEach(item => {
-                    if (_.isObject(formObject[key][item]) && formObject[key][item].isZipField) {
-                        /* reset the zip field value, remove success icon and error note when the country is changed */
-                        formObject[key][item].value = "";
-                        formObject[key][item].isValid = false;
-                        formObject[key][item].touched = false;
-                        formObject[key][item].errorType = null;
-                        if (isZipRestrictionRequired) {
-                            formObject[key][item].validation.maxLength = 5;
-                            formObject[key][item].validation.minLength = 5;
-                            formObject[key][item].elementConfig.onKeyPress = (event) => { return (event.charCode > 47 && event.charCode < 58) ? true : event.preventDefault() }
-                        } else {
-                            formObject[key][item].validation.maxLength = null;
-                            formObject[key][item].validation.minLength = null;
-                            formObject[key][item].elementConfig.onKeyPress = null;
-                        }
-                    }
-                });
-            } else {
-                if (formObject[key].isZipField) {
-                    /* reset the zip field value, remove success icon and error note when the country is changed */
-                    formObject[key].value = "";
-                    formObject[key].isValid = false;
-                    formObject[key].touched = false;
-                    formObject[key].errorType = null;
-                    if (isZipRestrictionRequired) {
-                        formObject[key].validation.maxLength = 5;
-                        formObject[key].validation.minLength = 5;
-                    } else {
-                        formObject[key].validation.maxLength = null;
-                        formObject[key].validation.minLength = null;
-                        formObject[key].elementConfig.onKeyPress = null;
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * This function is used to update the credit card CVV limit
-     * @param {STRING|OBJECT} {
-     *      @creditCardBrand contains the name of the credit card vendor
-     *      @formObject contains the latest form definition object
-     * }
-     * @returns {*|NONE}
-     **/
-    updateCreditCardCVVLimit = (creditCardBrand, formObject, isReset) => {
-        const creditCardCVVLimit = checkoutDetailDataUtil.getCreditCardCVVLimit(creditCardBrand);
-        for (let key in formObject) {
-            if ("multiple" === formObject[key].fieldFormat) {
-                //eslint-disable-next-line
-                Object.keys(formObject[key]).forEach(item => {
-                    if (_.isObject(formObject[key][item]) && formObject[key][item].isNewCardCVV) {
-                        if (isReset) {
-                            formObject[key][item].validation.maxLength = creditCardCVVLimit;
-                            formObject[key][item].validation.minLength = creditCardCVVLimit;
-                        } else {
-                            formObject[key][item].value = "";
-                            formObject[key][item].isValid = false;
-                            formObject[key][item].validation.maxLength = creditCardCVVLimit;
-                            formObject[key][item].validation.minLength = creditCardCVVLimit;
-                        }
-                    }
-                });
-            } else {
-                if (formObject[key].isNewCardCVV) {
-                    if (isReset) {
-                        formObject[key].validation.maxLength = creditCardCVVLimit;
-                        formObject[key].validation.minLength = creditCardCVVLimit;
-                    }
-                    else {
-                        formObject[key].value = "";
-                        formObject[key].isValid = false;
-                        formObject[key].validation.maxLength = creditCardCVVLimit;
-                        formObject[key].validation.minLength = creditCardCVVLimit;
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * This function is used to validate the entire form HTML fields
-     * @param {STRING|JSON} {
-     *      @formObject contains the updated form definition object
-     * }
-     * @returns {*|BOOLEAN}
-     **/
-    getUpdatedFormFieldValues = (formObject) => {
-        let formFieldJson = {};
-        for (let key in formObject) {
-            if ("multiple" === formObject[key].fieldFormat) {
-                //eslint-disable-next-line
-                Object.keys(formObject[key]).forEach(item => {
-                    if (_.isObject(formObject[key][item])) {
-                        formFieldJson[item] = {};
-                        formFieldJson[item]["value"] = formObject[key][item].value;
-                        formFieldJson[item]["isValid"] = formObject[key][item].isValid;
-                    }
-                });
-            } else {
-                formFieldJson[key] = {};
-                formFieldJson[key]["value"] = formObject[key].value;
-                formFieldJson[key]["isValid"] = formObject[key].isValid;
-                if(formObject[key]?.elementConfig?.id==="createAccountEmail" && this.state.formType === constantValues.FORM_TYPE_CREATE_ACCOUNT){
-                    formFieldJson[key]["isValidRealEmail"] = formObject[key]?.validation?.isValidRealEmail;
-                    formFieldJson[key]["validRealEmailError"] = formObject[key]?.errorDescriptions?.validRealEmailError;
-                    if(!formObject[key]?.validation?.isValidRealEmail){
-                        formFieldJson[key]["isValid"] = false;
-                    }
-                    if(formObject[key]?.validation?.isMasked){
-                        formFieldJson[key]["isValid"] = true;
-                    }
-                }
-            }
-        }
-        return formFieldJson;
-    }
-
-    /**
-     * This function is used to validate the entire form HTML fields
-     * @param {STRING|JSON} {
-     *      @formObject contains the updated form definition object
-     * }
-     * @returns {*|BOOLEAN}
-     **/
-    getCountryIdentifier = (formObject) => {
-        let countryIdentifier = "";
-        for (let key in formObject) {
-            if ("multiple" === formObject[key].fieldFormat) {
-                //eslint-disable-next-line
-                Object.keys(formObject[key]).forEach(item => {
-                    if (_.isObject(formObject[key][item]) && formObject[key][item].isCountryField) {
-                        countryIdentifier = !_.isEmpty(formObject[key][item].value) ? formObject[key][item].value : "";
-                    }
-                });
-            } else {
-                if (formObject[key].isCountryField) {
-                    countryIdentifier = !_.isEmpty(formObject[key].value) ? formObject[key].value : "";
-                }
-            }
-        }
-        return countryIdentifier;
-    }
-
-    /**
-     * This function is used to display the entered password/masked field
-     * @param {STRING} {
-     *      @identifier contains the identifier of the input field for which password is to be displayed
-     * }
-     * @returns {*|NONE}
-     **/
-    passwordFieldDisplayHandler = (identifier) => {
-        if (document.getElementById(identifier).type === "password") {
-            document.getElementById(identifier).type = "text";
-            if (identifier === 'leaseSSN4') {
-                document.getElementById(identifier).type = "number";
-            }
-            if (!_.isEmpty(document.getElementsByName(`${identifier}Anchor`))) {
-                document.getElementsByName(`${identifier}Anchor`)[0].setAttribute("aria-label", `${this.props.scriptingJson[constantValues._LBL_FORM_PASSWORD_WITHOUT_ASTRIK]} shown ${this.props.scriptingJson[constantValues._LNK_HIDE]} ${this.props.scriptingJson[constantValues._LBL_FORM_PASSWORD_WITHOUT_ASTRIK]}`)
-                document.getElementsByName(`${identifier}Anchor`)[0].innerText = this.props.scriptingJson[constantValues._LNK_HIDE];
-            }
-        } else {
-            document.getElementById(identifier).type = "password";
-            if (!_.isEmpty(document.getElementsByName(`${identifier}Anchor`))) {
-                document.getElementsByName(`${identifier}Anchor`)[0].setAttribute("aria-label", `${this.props.scriptingJson[constantValues._LBL_FORM_PASSWORD_WITHOUT_ASTRIK]} hidden ${this.props.scriptingJson[constantValues._LNK_VIEW]} ${this.props.scriptingJson[constantValues._LBL_FORM_PASSWORD_WITHOUT_ASTRIK]}`)
-                document.getElementsByName(`${identifier}Anchor`)[0].innerText = this.props.scriptingJson[constantValues._LNK_VIEW];
-            }
-        }
-    }
-
-    /**
-     * This function is executed when an input is provided to the HTML form field
+     * This function is executed when focusOut happens after providing value to the HTML form field or onBlur event on the form fields
      * @param {STRING|JSON} {
      *      @event contains either the HTML form field target or the entered value
      *      @elementFieldFormat indicates the type of form field i.e., `single` or `multiple`
@@ -357,58 +9,12 @@
      * }
      * @returns {*|NONE} updates the class state formDefinition object
      **/
-    inputChangedHandler = (event, elementFieldFormat, elementIdentifier, subElementIdentifier, elementOptions, skipOnChangeValidation,isCheckoutShippingZip) => {
-        let enteredValue = _.isString(event) ? event : event.target.value;
+    focusOutValidationHandler = (event, elementFieldFormat, elementIdentifier, subElementIdentifier) => {
+        let enteredValue = _.isString(event) ? event : event.target.value, updatedFormElement = null;
         let updatedFormDefinition = {
             ...this.state.formDefinition
         }
 
-        if(elementIdentifier === 'emailAddress') {
-            this.state.emailAlreadyExist = false;
-        }
-        if(elementIdentifier === 'zip_city') {
-            this.props.resetMarketSegmentError()
-            this.props.editShippingMarketSegmentErrorHandler("")
-        }
-        if ((["cardNumber", "cardExpiry", "cardCVV"].includes(elementIdentifier) || (elementFieldFormat === 'single' && elementIdentifier==='creditCard')) && this.props.updateCreditCardDataNotifier) {
-            this.props.updateCreditCardDataNotifier(elementIdentifier);
-        }
-
-        
-
-        const dropDownLabelSpanElem = document.getElementById(elementIdentifier + this.state.formType + "LabelSpan");
-        const dropDownSelectedSpanElem = document.getElementById(elementIdentifier + this.state.formType + "SelectedSpan");
-        if (!_.isNull(dropDownSelectedSpanElem) && !_.isEmpty(event) && _.isString(event)) {
-            if (!_.isNull(dropDownLabelSpanElem)) {
-                dropDownLabelSpanElem.className = "place-holder-selected";
-            }
-            dropDownSelectedSpanElem.innerText = checkoutDetailDataUtil.getDisplayNameAndValue(event, elementOptions, "value", "displayValue");
-        }
-
-        if (updatedFormDefinition[elementIdentifier]?.isStateFieldToggleRequired) {
-            const stateFieldKey = _.findKey(updatedFormDefinition, function (formDefinitionJson) { return formDefinitionJson.isStateField; });
-            const countryDisplayValue = checkoutDetailDataUtil.getDisplayNameAndValue(event, elementOptions, "value", "displayValue");
-            /* toggle the state field between dropdown format and textbox format */
-            if (countryDisplayValue.search(new RegExp(this.props.scriptingJson[constantValues.STATE_TOGGLE_COUNTRIES_REGEX], "i")) >= 0) {
-                const stateSelectedSpanElem = document.getElementById("state" + this.state.formType + "SelectedSpan");
-                const countryCode = (findRequestedObject(constantValues.COUNTRY_LIST, countryDisplayValue, "displayValue") || {}).value;
-                /* refresh the state label span */
-                if (!_.isNull(stateSelectedSpanElem)) {
-                    stateSelectedSpanElem.innerText = "";
-                }
-                updatedFormDefinition[stateFieldKey] = this.getNewStateFieldDefinition("dropdown", countryCode);
-            } else {
-                updatedFormDefinition[stateFieldKey] = this.getNewStateFieldDefinition("textbox");
-            }
-            /* enable or disable the zipcode restriction based on selected country */
-            if (countryDisplayValue.search(new RegExp(this.props.scriptingJson[constantValues.ZIP_RESTRICTED_COUNTRIES_REGEX], "i")) >= 0) {
-                this.updateZipCodeLengthRestriction(true, updatedFormDefinition);
-            } else {
-                this.updateZipCodeLengthRestriction(false, updatedFormDefinition);
-            }
-        }
-
-        let updatedFormElement = null;
         if ("multiple" === elementFieldFormat) {
             const updatedFormObjectJson = {
                 ...updatedFormDefinition[elementIdentifier]
@@ -416,6 +22,7 @@
             updatedFormElement = {
                 ...updatedFormObjectJson[subElementIdentifier]
             }
+
             /* fetching and providing the credit card type */
             if (updatedFormElement.validation.isCreditCard || updatedFormElement.validation.isAcquisitionCreditCard) {
                 const creditCardBrandName = checkoutDetailDataUtil.getCreditCardBrandName(enteredValue);
@@ -430,55 +37,18 @@
             if (updatedFormElement.validation) {
                 const validationStatusObj = this.checkFormInputs(enteredValue, updatedFormElement.validation, undefined, updatedFormElement?.elementConfig?.id);
                 updatedFormElement.isValid = validationStatusObj.validity;
-                //updatedFormElement.errorType = validationStatusObj.errorType;
+                updatedFormElement.errorType = validationStatusObj.errorType;
             }
 
-            /*updating the corresponding formElement JSON immutably */
-            
-            updatedFormElement.value = enteredValue;
-            updatedFormElement.touched = true;
-
-            /* Format the phone number in USA format */
-            if (updatedFormElement.isPhoneField) {
-                let phoneNumber = updatedFormElement.value;
-                const input = phoneNumber.replace(/\D/g, '').substring(0, 10); // First ten digits of input only
-                const zip = input.substring(0, 3), middle = input.substring(3, 6), last = input.substring(6, 10);
-
-                if (input.length > 6) { phoneNumber = `(${zip}) ${middle} ${last}`; }
-                else if (input.length > 3) { phoneNumber = `(${zip}) ${middle}`; }
-                else if (input.length > 0) { phoneNumber = `(${zip}`; }
-                updatedFormElement.value = phoneNumber;
+            /* fetch city and state using the zipcode and save in store */
+            if (updatedFormElement.isZipField && updatedFormElement.isValid) {
+                /* update city and state if zip field is valid */
+                const mapQuestApiUrl = this.props.scriptingJson[constantValues.MAP_QUEST_END_POINT_URL] + this.props.scriptingJson[constantValues.MAP_QUEST_API_PATH] + `?key=${this.props.scriptingJson[constantValues.MAP_QUEST_AUTH_TOKEN]}&location=${enteredValue},${this.getCountryIdentifier(updatedFormDefinition)}&outFormat=json&maxResults=1`;
+                this.props.onInitUpdateCityStateInStore(mapQuestApiUrl, this.state.formType);
             }
-            /* Format the Zip Code if pasted */
-            if (updatedFormElement.isCheckoutShippingZip) {
-                let zipentered = updatedFormElement.value;
-                var input = zipentered
-                if(input === ""){
-                    const secondFormElement = {
-                        ...updatedFormObjectJson["city"]
-                    }
-                    const validationStatusObj = this.checkFormInputs("", secondFormElement.validation, undefined, secondFormElement?.elementConfig?.id);
-                    secondFormElement.isValid = validationStatusObj.validity;
-
-                    secondFormElement.value = "";
-                    // secondFormElement.touched = true;
-                    updatedFormObjectJson["city"] = secondFormElement;
-                }
-                if(zipentered.length >5){
-                input = zipentered.replace(/\D/g, '').substring(0, 5); 
-                }
-                updatedFormElement.value = input;
-            }
-            /* Format the card expiry in MM/YY format */
-            if (updatedFormElement.isCardExpiryField) {
-                let cardExpiry = updatedFormElement.value;
-                const input = cardExpiry.replace(/\D/g, '').substring(0, 4); // First 4 digits of input only
-                const month = input.substring(0, 2), year = input.substring(2, 4)
-                if (input.length > 2) { cardExpiry = `${month}/${year}` }
-                updatedFormElement.value = cardExpiry;
-            }
-            if (updatedFormElement.isCityField) {
-                this.state.updatedZipCode = false;
+            /* Set touched to false if no value is provided */
+            if (_.isEmpty(updatedFormElement.value)) {
+                updatedFormElement.touched = false;
             }
 
             updatedFormObjectJson[subElementIdentifier] = updatedFormElement;
@@ -487,6 +57,7 @@
             updatedFormElement = {
                 ...updatedFormDefinition[elementIdentifier]
             }
+
             /* fetching and providing the credit card type */
             if (updatedFormElement.validation.isCreditCard || updatedFormElement.validation.isAcquisitionCreditCard) {
                 const creditCardBrandName = checkoutDetailDataUtil.getCreditCardBrandName(enteredValue);
@@ -495,30 +66,33 @@
                 } else {
                     this.props.updateCreditCardVendorIconHandler(null);
                 }
-                /* Update the credit card CVV limit */
-                this.updateCreditCardCVVLimit(creditCardBrandName, updatedFormDefinition);
-            }
-
-            /* Updating the corresponding formElement JSON immutably */
-            updatedFormElement.value = enteredValue;
-            /* switching touched parameter for checkbox/toggle field type */
-            if ("checkbox" === updatedFormElement.fieldType || "toggle" === updatedFormElement.fieldType) {
-                if (updatedFormElement.touched) {
-                    updatedFormElement.touched = false;
-                    updatedFormElement.value = "";
-                } else {
-                    updatedFormElement.touched = true;
-                    updatedFormElement.value = "checked";
-                }
-            } else {
-                updatedFormElement.touched = true;
             }
 
             /*updating the corresponding formElement JSON immutably */
             if (updatedFormElement.validation) {
-                const validationStatusObj = this.checkFormInputs(updatedFormElement.value, updatedFormElement.validation, undefined, updatedFormElement?.elementConfig?.id);
+                const validationStatusObj = this.checkFormInputs(enteredValue, updatedFormElement.validation, undefined, updatedFormElement?.elementConfig?.id);
                 updatedFormElement.isValid = validationStatusObj.validity;
-                //updatedFormElement.errorType = validationStatusObj.errorType;
+                updatedFormElement.errorType = validationStatusObj.errorType;
+            }
+
+            /* fetch city and state using the zipcode and save in store */
+            if (updatedFormElement.isZipField && updatedFormElement.isValid) {
+                /* update city and state if zip field is valid */
+                const mapQuestApiUrl = this.props.scriptingJson[constantValues.MAP_QUEST_END_POINT_URL] + this.props.scriptingJson[constantValues.MAP_QUEST_API_PATH] + `?key=${this.props.scriptingJson[constantValues.MAP_QUEST_AUTH_TOKEN]}&location=${enteredValue},${this.getCountryIdentifier(updatedFormDefinition)}&outFormat=json&maxResults=1`;
+                this.props.onInitUpdateCityStateInStore(mapQuestApiUrl, this.state.formType);
+            }
+            /**to add aria live on focus */
+            if (updatedFormElement.live) {
+                updatedFormElement.showAriaLive = true;
+            }
+
+            /* Set touched to false if no value is provided */
+            if (_.isEmpty(updatedFormElement.value)) {
+                updatedFormElement.touched = false;
+            }
+            /* set touched to true for special input fields */
+            if (updatedFormElement.isAlwaysTouched) {
+                updatedFormElement.touched = true;
             }
 
             /* check for valid raf code alphanumeric-alphanumeric*/
@@ -527,84 +101,300 @@
                 updatedFormElement.isValid = /^[a-z0-9A-Z]{4}-{1}[a-z0-9A-Z]{4}$/.test(rafCode);
             }
 
-            /* since state is a dropdown field, hence update the validity status when onChange event occur */
-            if ("dropdown" === updatedFormElement.fieldType) {
-                if (!_.isEmpty(enteredValue)) {
-                    updatedFormElement.value = enteredValue;
-                    updatedFormElement.displayValue = checkoutDetailDataUtil.getDisplayNameAndValue(enteredValue, updatedFormElement.options, "value", "displayValue");
-                    updatedFormElement.isValid = true;
+            if(this.props.scriptingJson[constantValues.ENABLE_ACCOUNT_CREATION_VALIDATION] === "true" && updatedFormElement?.elementConfig?.id==="createAccountEmail" && this.state.formType === constantValues.FORM_TYPE_CREATE_ACCOUNT){
+               if(updatedFormElement.errorType==="validRealEmailError"){
                     updatedFormElement.errorType = null;
-                    if(document.getElementById(`${elementIdentifier}${this.state.formType}Label`)){
-                        document.getElementById(`${elementIdentifier}${this.state.formType}Label`).focus();
-                    }
-                    if(elementIdentifier === 'nickName') {
-                        this.props.resetMarketSegmentError();
-                    }
-                } else {
-                    updatedFormElement.isValid = false;
-                    updatedFormElement.errorType = "isMandatoryError";
+                    updatedFormElement.isValid = true;
+                    updatedFormElement.validation.isValidRealEmail =true;
                 }
             }
-            /* Format the phone number in USA format */
-            if (updatedFormElement.isPhoneField) {
-                let phoneNumber = updatedFormElement.value;
-                const input = phoneNumber.replace(/\D/g, '').substring(0, 10); // First ten digits of input only
-                const zip = input.substring(0, 3), middle = input.substring(3, 6), last = input.substring(6, 10);
-
-                if (input.length > 6) { phoneNumber = `(${zip}) ${middle} ${last}`; }
-                else if (input.length > 3) { phoneNumber = `(${zip}) ${middle}`; }
-                else if (input.length > 0) { phoneNumber = `(${zip}`; }
-                updatedFormElement.value = phoneNumber;
-            }
-
-            /* Format the card number */
-            if (updatedFormElement.isCardNumberField) {
-                let cardNumber = updatedFormElement.value;
-                const input = cardNumber.replace(/\D/g,'');
-                const first = input.substring(0,4), second = input.substring(4,8), third = input.substring(8,12), fourth = input.substring(12,16), fifth = input.substring(16,19);
-
-                if(input.length > 16){cardNumber = `${first} ${second} ${third} ${fourth} ${fifth}`;}
-                else if(input.length > 12){cardNumber = `${first} ${second} ${third} ${fourth}`;}
-                else if(input.length > 8){cardNumber = `${first} ${second} ${third}`;}
-                else if(input.length > 4){cardNumber = `${first} ${second}`;}
-                else if(input.length > 0){cardNumber = `${first}`;}
-                updatedFormElement.value = cardNumber;
-            }
-            if (updatedFormElement.elementConfig.type === "tel") {
-                updatedFormElement.isValid = updatedFormElement.value.length === 14 ? true : false
-            }
-            if (updatedFormElement.elementConfig.type === "email") {
-                updatedFormElement.isValid = updatedFormElement.value.match(constantValues.IS_EMAIL_REGEX) ? true : false
+             // address validation
+             if (elementIdentifier == 'addressLine1' || elementIdentifier == 'addressLine2') {
+                if (!_.isEmpty(enteredValue)) {
+                    const addressDigitsCheckFail = checkoutDetailDataUtil.hasMoreThanRequiredContinuousDigits(!_.isEmpty(enteredValue) ? enteredValue : '', this.props.scriptingJson[constantValues._SHIPPING_ADDRESS_ALLOWED_DIGITS])
+                    if (addressDigitsCheckFail) {
+                        updatedFormElement.isValid = false;
+                        updatedFormElement.errorType = "isDigitLimitExceedError";
+                    }
+                }
             }
             updatedFormDefinition[elementIdentifier] = updatedFormElement;
-
-            /* store the state field detail in redux store */
-            if (updatedFormElement.isStateField || "checkbox" === updatedFormElement.fieldType || "toggle" === updatedFormElement.fieldType || "gifttextarea" === updatedFormElement.fieldType) {
-                this.props.onInitFormDetailUpdateInStore(this.getUpdatedFormFieldValues(updatedFormDefinition), this.state.formType, false);
-            }
-            if ("dropdown" === updatedFormElement.fieldType) {
-                this.props.onInitFormDetailUpdateInStore({ "searchUserInput": null, "elementIdentifier": null, "elementName": null }, "dropDownFormFieldAccess", false);
-            }
         }
 
         /*check the form validity */
         let formIsValid = this.checkFormValidity(updatedFormDefinition);
-        if (formIsValid || skipOnChangeValidation) {
-            this.props.onInitFormDetailUpdateInStore(this.getUpdatedFormFieldValues(updatedFormDefinition), this.state.formType, false);
-        }
+
+        /* store the form detail in redux store when form is successfully validated */
+        this.props.onInitFormDetailUpdateInStore(this.getUpdatedFormFieldValues(updatedFormDefinition), this.state.formType, false);
 
         /* set the state with updated shipping form details and form validity status */
         this.setState({
             formDefinition: updatedFormDefinition,
             formIsValid: formIsValid
         });
-
-        const e = {};
-        Object.assign(e,event);
-        setTimeout(()=>{
-            if(isCheckoutShippingZip){
-                enteredValue = enteredValue.length >5 ? enteredValue.substring(0,5) : enteredValue;
-                this.focusOutValidationHandler(e, elementFieldFormat, elementIdentifier, subElementIdentifier)
-            }
-        },1000)
     }
+
+    inputFocus = (live, key) => {
+        /**
+         * if aria live announcement is required for the input
+         */
+        if (live) {
+            const updatedFormDefinition = {
+                ...this.state.formDefinition,
+            };
+
+            updatedFormDefinition[key] = {
+                ...updatedFormDefinition[key],
+                showAriaLive: false,
+            }
+
+            this.setState((state) => ({
+                ...state,
+                formDefinition: updatedFormDefinition,
+            }));
+        }
+    }
+
+    addErrorForBtnAccessibility(formElementObj, ariaDescribedByArr) {
+        if (this.props.addFormErrorsBtnAccessibility) {
+            let errorText = formElementObj.errorDescriptions[formElementObj.errorType];
+            if (_.isEmpty(errorText) && !formElementObj.isValid && _.isEmpty(formElementObj.value) && formElementObj.validation?.required && formElementObj.errorDescriptions?.isMandatoryError) {
+                errorText = formElementObj.errorDescriptions?.isMandatoryError;
+            }
+            if (!_.isEmpty(errorText)) ariaDescribedByArr.push(`${formElementObj.label} ${constantValues._LBL_ERROR} ${errorText}`);
+        }
+        return true;
+    }
+
+    render() {
+        const isNewImplementation = /STRAIGHT_TALK/i.test(this.props.scriptingJson[constantValues.API_BRAND_NAME]);
+        /* update the city field and state field based on zipcode */
+        if (!_.isNull(this.props.mapQuestCityName) || !_.isNull(this.props.mapQuestStateName)) {
+            this.state.updatedZipCode = false;
+            this.updateCityStateFormFields();
+        }
+        let formClass = "";
+        const ariaDescribedByArr = [];
+
+        const formElementsArray = [];
+        for (let key in this.state.formDefinition) {
+            formElementsArray.push({
+                id: key,
+                config: this.state.formDefinition[key]
+            });
+        }
+        if (this.state.formType == constantValues.FORM_TYPE_RAF_CODE) {
+            formClass = "row";
+        }
+
+        const formStructure = formElementsArray.map(formElement => {
+            let FormDefinitionElem = null;
+            if ("single" === formElement.config.fieldFormat && "textbox" === formElement.config.fieldType && (_.isUndefined(formElement.config.isLoggedInUserField) || this.props.isLoggedIn === formElement.config.isLoggedInUserField)) {
+                /* determine input group class name based on various parameter */
+                let inputGroupClassName = `col-12 pb-10 pl-0 pr-0 ${this.props?.formDefinition?.userInput?.className ? this.props?.formDefinition?.userInput?.className : ``}`;
+                if (formElement.config.isDisabled) {
+                    inputGroupClassName = "col-12 pb-10 pl-0 pr-0 disabled";
+                } else if (formElement.config.isHidden) {
+                    inputGroupClassName = "col-12 pb-10 pl-0 pr-0 d-none";
+                } else if (formElement.config.isOTPField && this.props.hideOtpField) {
+                    inputGroupClassName = "col-12 pb-10 pl-0 pr-0 d-none";
+                } else if (formElement.config.isPhoneField && this.props.hidePhoneNumberField) {
+                    inputGroupClassName = "col-12 pb-10 pl-0 pr-0 d-none";
+                }
+                else if (this.state.formType == constantValues.FORM_TYPE_RAF_CODE) {
+                    inputGroupClassName = "col-12 col-sm-5";
+                }
+                let inputClassName = '';
+                if (formElement?.config?.elementConfig?.isDisabledField) {
+                    inputClassName = formElement.config.elementConfig.className;
+                } else {
+                  inputClassName = formElement.config.isValid && formElement.config.touched ? formElement.config.elementConfig.className + " success" : formElement.config.elementConfig.className;
+                }
+                inputClassName = formElement.config.errorType && !formElement.config.isValid ? `${inputClassName} error` : inputClassName;
+                if (formElement.config.elementConfig.type === "tel" && formElement.config.value === "") {
+                    inputClassName = formElement.config.elementConfig.className
+                } else if (formElement.config.elementConfig.type === "email" && formElement.config.value === "") {
+                    inputClassName = inputClassName ?inputClassName:formElement.config.elementConfig.className
+                }
+
+                if (formElement.config?.eitherOr) {
+                    formElement.config.validation.required = true;
+                    let firstElem = formElementsArray.filter(function (value) { return value.config.element == 'first' });
+                    let secondElem = formElementsArray.filter(function (value) { return value.config.element == 'second' });
+
+                    if (secondElem[0].config.isValid) {
+                        firstElem[0].config.validation.required = false;
+                        firstElem[0].config.validation.waiveValidation = true;
+                    } else if (firstElem[0].config.isValid) {
+                        secondElem[0].config.validation.required = false;
+                        secondElem[0].config.validation.waiveValidation = true;
+                    }
+                }
+                FormDefinitionElem = (
+                    <div className={inputGroupClassName} key={formElement.id}>
+                        <div className="md-form input-group alternate bg-soft-grey mt-0 mb-0">
+                            {formElement.config.tooltipContent ?
+                                <><div className="textbox-tooltip-label">
+                                    <label htmlFor={formElement.config.elementConfig.name} className={formElement.config.value || formElement.config.touched ? "checkoutLabel active" : "checkoutLabel"}>{formElement.config.label}</label>
+                                    {formElement.config.tooltipContent ?
+                                        <Tooltip
+                                            id={`${formElement.config.elementConfig.id}-tooltip`}
+                                            tooltipContent={formElement.config.tooltipContent}
+                                            tooltipConfig={formElement.config.tooltipConfig}>
+                                            <Icon
+                                                className="more-info-cards"
+                                                isSmall="true">
+                                            </Icon>
+                                        </Tooltip>
+                                        : null}
+                                </div>
+                                    <div className="textbox-tooltip-field">
+                                        <FormElements
+                                            valueType={formElement.id}
+                                            elementType={formElement.config.elementType}
+                                            elementConfig={formElement.config.elementConfig}
+                                            value={formElement.config.isCountryField ? formElement.config.displayValue : formElement.config.value}
+                                            classVal={inputClassName}
+                                            changed={(event) => this.inputChangedHandler(event, formElement.config.fieldFormat, formElement.id, null, null, formElement.config.skipOnChangeValidation)}
+                                            focusOut={(event) => this.focusOutValidationHandler(event, formElement.config.fieldFormat, formElement.id)}
+                                            label={formElement.config.label}
+                                            valid={formElement.config.isValid}
+                                            touched={formElement.config.touched}
+                                            onFocus={this.inputFocus}
+                                            live={formElement.config.live}
+                                            componentVersion={this.props.componentVersion}
+                                            isComponentDisabled={this.props?.componentClassName?.includes("disabledContent")}
+                                        />
+                                    </div>
+                                </> : <>
+                                    <label htmlFor={formElement.config.elementConfig.name} className={formElement.config.value || formElement.config.touched ? "checkoutLabel active" : "checkoutLabel"}>{formElement.config.label}</label>
+                                    <FormElements
+                                        valueType={formElement.id}
+                                        elementType={formElement.config.elementType}
+                                        elementConfig={formElement.config.elementConfig}
+                                        value={formElement.config.isCountryField ? formElement.config.displayValue : formElement.config.value}
+                                        classVal={inputClassName}
+                                        changed={(event) => this.inputChangedHandler(event, formElement.config.fieldFormat, formElement.id, null, null, formElement.config.skipOnChangeValidation)}
+                                        focusOut={(event) => this.focusOutValidationHandler(event, formElement.config.fieldFormat, formElement.id)}
+                                        label={formElement.config.label}
+                                        valid={formElement.config.isValid}
+                                        touched={formElement.config.touched}
+                                        onFocus={this.inputFocus}
+                                        live={formElement.config.live}
+                                        componentVersion={this.props.componentVersion}
+                                        isComponentDisabled={this.props?.componentClassName?.includes("disabledContent")}
+                                    />
+                                </>}
+                            {formElement.config.cardBrand ?
+                                <span className="input-card-type-image">
+                                    <img
+                                        className="card-type-logo"
+                                        style={{ width: '45px' }}
+                                        alt={formElement.config.cardBrand}
+                                        src={checkoutDetailDataUtil.getCreditCardVendorLogoImage(formElement.config.cardBrand, this.props.scriptingJson.creditCardVendors)} />
+                                </span> : null}
+                            {formElement.config.showViewOption && formElement.config.value ?
+                                //eslint-disable-next-line
+                                <a
+                                    className="view-link d-block caption-two"
+                                    tabIndex="0"
+                                    role="button"
+                                    aria-label={`${this.props.scriptingJson[constantValues._LNK_VIEW]} ${this.props.scriptingJson[constantValues._LBL_FORM_PASSWORD_WITHOUT_ASTRIK]}`}
+                                    name={`${formElement.config.elementConfig.id}Anchor`}
+                                    onKeyPress={(event) => { if (event.key === "Enter") { this.passwordFieldDisplayHandler(formElement.config.elementConfig.id) } }}
+                                    onClick={() => this.passwordFieldDisplayHandler(formElement.config.elementConfig.id)}>{this.props.scriptingJson[constantValues._LNK_VIEW]}</a> : null}
+                        </div>
+                        {!_.isEmpty(formElement.config.errorDescriptions) && this.addErrorForBtnAccessibility(formElement.config, ariaDescribedByArr)&&!(formElement?.config?.elementConfig?.id==="rafMinInput"|| formElement?.config?.elementConfig?.id==="rafCodeInput")?
+                            <p id={formElement.id + this.state.formType + "error"} aria-live={formElement.config.showAriaLive ? "assertive" : "off"} className={formElement.config.errorClassName ? formElement.config.errorClassName : "error-text legal mt-10"}>{formElement.config.errorDescriptions[formElement.config.errorType]}</p> : null}
+                        
+                        {!_.isEmpty(formElement?.config?.errorDescriptions)&&this.addErrorForBtnAccessibility(formElement?.config,ariaDescribedByArr)&&(formElement?.config?.elementConfig?.id==="rafMinInput"|| formElement?.config?.elementConfig?.id==="rafCodeInput")&&formElement?.config?.errorType?
+                            <>
+                            {/TOTAL_WIRELESS/i.test(formElement?.config?.brandName)?
+                                <p id={formElement.id + this.state.formType + "error"} aria-live={formElement.config.showAriaLive ? "assertive" : "off"} className={formElement.config.errorClassName ? formElement.config.errorClassName : "error-text legal mt-10"}>
+                                    <span class="icon dark-theme large-icon">
+                                        <i class="error-total-red"></i>
+                                    </span>
+                                    {formElement?.config?.errorDescriptions[formElement?.config?.errorType]}
+                                </p>
+                                :
+                                <p id={formElement.id + this.state.formType + "error"} aria-live={formElement.config.showAriaLive ? "assertive" : "off"} className={formElement.config.errorClassName ? formElement.config.errorClassName : "error-text legal mt-10"}>{formElement.config.errorDescriptions[formElement.config.errorType]}</p>}
+                        </>:null}
+                    </div>
+                );
+            } else if ("multiple" === formElement.config.fieldFormat && "textbox" === formElement.config.fieldType) {
+                const fieldClasses = formElement.config.fieldClasses;
+                const isStraighttalkBrand = /STRAIGHT_TALK/i.test(this.props.scriptingJson[constantValues.API_BRAND_NAME]);
+                FormDefinitionElem = (
+                    <div className="row ml-0 mr-0" key={formElement.id}>
+                        {Object.keys(formElement.config).map(formElementKey => {
+                            return _.isObject(formElement.config[formElementKey]) ? [...Array(formElement.config[formElementKey])].map((formElementObj) => {
+                                let inputClassName = formElementObj.isValid && formElementObj.touched ? formElementObj.elementConfig.className + " success" : '';
+                                inputClassName = formElementObj.errorType && !formElementObj.isValid ? `${inputClassName} error` : inputClassName;
+                                return (<div className={!fieldClasses ? formElementObj.isFirstField ? "col-6 pb-10 pl-0 pr-3" : "col-6 pb-10 pr-0 pl-3" : fieldClasses} key={formElementKey}>
+                                    <div className="md-form input-group alternate mt-0 mb-0 bg-soft-grey">
+                                        <label htmlFor={formElementObj.elementConfig.name} className={formElementObj.value ? "checkoutLabel active" : "checkoutLabel"}>{formElementObj.label}</label>
+                                        {/\b(v1)\b/i.test(this.props.componentVersion) ?
+                                        <FormElements
+                                            ariaDescribedBy={`${formElementKey}${this.state.formType}error ${formElementObj.isCityField ? "ariaDescElement" + formElementObj.elementConfig.id : ""}`}
+                                            ariaLabel="This Field is changed to* "
+                                            valueType={formElementKey}
+                                            elementType={formElementObj.elementType}
+                                            elementConfig={formElementObj.elementConfig}
+                                            value={formElementObj.value}
+                                            classVal={(this.props.getMarketSegmentError || this.props.editShippingMarketSegmentError) && (formElementObj.elementConfig.id === "customerZip" || formElementObj.elementConfig.id === "editShippingCustomerZip") ? `${inputClassName} error` :  inputClassName}
+                                            changed={(event) => this.inputChangedHandler(event, formElement.config.fieldFormat, formElement.id, formElementKey,null,null,formElementObj.isCheckoutShippingZip)}
+                                            focusOut={(event) => !formElementObj?.isCheckoutShippingZip?this.focusOutValidationHandler(event, formElement.config.fieldFormat, formElement.id, formElementKey):null}
+                                            label={formElementObj.label}
+                                            valid={formElementObj.isValid}
+                                            componentVersion={this.props.componentVersion}
+                                            isComponentDisabled={this.props?.componentClassName?.includes("disabledContent")}
+                                            touched={formElementObj.touched} /> :  
+                                            <FormElements
+                                            ariaDescribedBy={`${formElementKey}${this.state.formType}error ${!_.isEmpty(formElementObj.ariaRequiredDescription)||formElementObj.isCityField ? "ariaDescElement" + formElementObj.elementConfig.id : ""}`}
+                                            valueType={formElementKey}
+                                            elementType={formElementObj.elementType}
+                                            elementConfig={formElementObj.elementConfig}
+                                            value={formElementObj.value}
+                                            classVal={(this.props.getMarketSegmentError || this.props.editShippingMarketSegmentError) && (formElementObj.elementConfig.id === "customerZip" || formElementObj.elementConfig.id === "editShippingCustomerZip") ? `${inputClassName} error` :  inputClassName}
+                                            changed={(event) => this.inputChangedHandler(event, formElement.config.fieldFormat, formElement.id, formElementKey,null,null,formElementObj.isCheckoutShippingZip)}
+                                            focusOut={(event) => !formElementObj?.isCheckoutShippingZip?this.focusOutValidationHandler(event, formElement.config.fieldFormat, formElement.id, formElementKey):null}
+                                            label={formElementObj.isCardExpiryField && formElementObj.elementConfig["aria-label"] ? formElementObj.elementConfig["aria-label"] : formElementObj.label}
+                                            valid={formElementObj.isValid}
+                                            componentVersion={this.props.componentVersion}
+                                            isComponentDisabled={this.props?.componentClassName?.includes("disabledContent")}
+                                            touched={formElementObj.touched} />}
+                                    </div>
+
+                                    {isStraighttalkBrand && this.props.getMarketSegmentError && formElementObj.elementConfig.id === "customerZip" ? (
+                                        <div className="mksg-error-message-container">
+                                            <div className="mksg-error-icon-text-wrapper">
+                                                <div className='mksg-error-icon-aligment'>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="19" viewBox="0 0 18 19" fill="none">
+                                                        <path fillRule="evenodd" clipRule="evenodd" d="M1.19922 9.20332C1.19922 4.89297 4.68887 1.40332 8.99922 1.40332C13.3096 1.40332 16.7992 4.89297 16.7992 9.20332C16.7992 13.5137 13.3029 17.0033 8.99922 17.0033C4.69554 17.0033 1.19922 13.5137 1.19922 9.20332ZM12.8598 6.44526C13.1643 6.14071 13.1649 5.64707 12.8605 5.34247C12.5559 5.03789 12.0617 5.03794 11.757 5.34247L8.99905 8.10047L6.24106 5.34247C5.93654 5.03816 5.44354 5.03825 5.13897 5.34247C4.83442 5.64702 4.83385 6.14063 5.13828 6.44526L7.89627 9.20325L5.13828 11.9612C4.83384 12.2659 4.83442 12.7595 5.13897 13.064C5.44353 13.3684 5.93650 13.3684 6.24106 13.064L8.99905 10.306L11.757 13.064C12.0617 13.3686 12.5559 13.3686 12.8605 13.064C13.1648 12.7594 13.1643 12.2657 12.8598 11.9612L10.1018 9.20325L12.8598 6.44526Z" fill="black" />
+                                                    </svg>
+                                                </div>
+                                                <p className="mksg-error-text">
+                                                    {this.props.getMarketSegmentError}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <p className="error-text legal mt-10">{this.props.getMarketSegmentError && formElementObj.elementConfig.id === "customerZip" ? this.props.getMarketSegmentError : ""}</p>
+                                    )}
+
+                                    {isStraighttalkBrand && this.props.editShippingMarketSegmentError && formElementObj.elementConfig.id === "editShippingCustomerZip"  ? (
+                                        <div className="mksg-error-message-container">
+                                            <div className="mksg-error-icon-text-wrapper">
+                                                <div className='mksg-error-icon-aligment'>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="19" viewBox="0 0 18 19" fill="none">
+                                                        <path fillRule="evenodd" clipRule="evenodd" d="M1.19922 9.20332C1.19922 4.89297 4.68887 1.40332 8.99922 1.40332C13.3096 1.40332 16.7992 4.89297 16.7992 9.20332C16.7992 13.5137 13.3029 17.0033 8.99922 17.0033C4.69554 17.0033 1.19922 13.5137 1.19922 9.20332ZM12.8598 6.44526C13.1643 6.14071 13.1649 5.64707 12.8605 5.34247C12.5559 5.03789 12.0617 5.03794 11.757 5.34247L8.99905 8.10047L6.24106 5.34247C5.93654 5.03816 5.44354 5.03825 5.13897 5.34247C4.83442 5.64702 4.83385 6.14063 5.13828 6.44526L7.89627 9.20325L5.13828 11.9612C4.83384 12.2659 4.83442 12.7595 5.13897 13.064C5.44353 13.3684 5.93650 13.3684 6.24106 13.064L8.99905 10.306L11.757 13.064C12.0617 13.3686 12.5559 13.3686 12.8605 13.064C13.1648 12.7594 13.1643 12.2657 12.8598 11.9612L10.1018 9.20325L12.8598 6.44526Z" fill="black" />
+                                                    </svg>
+                                                </div>
+                                                <p className="mksg-error-text">
+                                                    {this.props.editShippingMarketSegmentError}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <p className="error-text legal mt-10">{this.props.editShippingMarketSegmentError && formElementObj.elementConfig.id === "editShippingCustomerZip" ? this.props.editShippingMarketSegmentError : ""}</p>
+                                    )}
