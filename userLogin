@@ -6,6 +6,7 @@ import * as constantValues from '../../../store/constants/config';
 import UserCreateAccount from './../UserCreateAccount/UserCreateAccount';
 import OtpLogin from './OtpLogin/OtpLogin';
 import * as authDetailDataUtil from '../../../utils/AuthDetailDataUtil/AuthDetailDataUtil';
+import { getValueFromActivationCookie } from '../../MyAccountLoginFlow/utility/common';
 
 const changeTabsFR = (e) => {
     const target = e;
@@ -128,6 +129,16 @@ class UserLogin extends Component{
         /* Determine flag to enable Login with Verification Code from "enableLoginWithVerificationCode" cookie */
         const enableLoginWithVerificationCode = authDetailDataUtil.getCookie("enableLoginWithVerificationCode", constantValues.ARIA_HIDDEN_TRUE);  
         
+        
+            const accountStatus = localStorage.getItem(constantValues.ACCOUNT_STATUS);
+            const isReact = getValueFromActivationCookie(constantValues.IS_REACTIVATION);
+            const flow = getValueFromActivationCookie(constantValues.FLOW)
+            if ((accountStatus === constantValues.DUMMY_ACCOUNT || authDetailDataUtil.isDummyWithRealEmailSet()) && (flow == constantValues.REACTIVATION_TYPE || isReact || flow == constantValues.UPGRADE_TYPE || flow == constantValues.NEW_ACTIVATION_TYPE || flow == constantValues.EXTERNAL_TYPE || flow == constantValues.INTERNAL_TYPE) ) {
+                this._element.querySelector('.login-tab-userauth')?.classList.add('d-none');
+                this._element.querySelector('#login-tab')?.parentElement?.classList.add('d-none');
+                this._element.querySelector('#profile-tab')?.click();
+            }
+        
         return (
             <React.Fragment>
                     <p className={/\b(v1)\b/i.test(this.props.componentVersion)&&!_.isEmpty(this.props.userAuthenticationStatus)&&this.props.userAuthenticationStatus[constantValues.SHOW_LOGIN]&&this.props.transactionType!==constantValues.CART_TRANSACTION_TYPE_ACTIVATION && this.props.transactionType!==constantValues.CART_TRANSACTION_TYPE_REFILL?"heading-four font-weight-bold":"heading-four font-weight-bold d-none"}>
@@ -229,6 +240,7 @@ class UserLogin extends Component{
                                             headlineCreateAccount={this.props.headlineCreateAccount}
                                             ageConsent={this.props.ageConsent}
                                             scriptingJson={this.props.scriptingJson}
+                                            skipAdditionalDetailsSection={this.props.skipAdditionalDetailsSection}
                                             isVerificationCodeValidated={this.props.isVerificationCodeValidated}
                                             whyNeedThisLinkText={this.props.whyNeedThisLinkText}
                                             whyNeedThisLinkModalContent={this.props.whyNeedThisLinkModalContent}
@@ -249,7 +261,9 @@ class UserLogin extends Component{
                                             disableCaptcha={this.props.disableCaptcha}
                                             facebookLogin={() => this.props.facebookLogin(true)}
                                             componentVersion={this.props.componentVersion}
-                                            twoFAInfoLink={this.props.twoFAInfoLink}/>:null}
+                                            twoFAInfoLink={this.props.twoFAInfoLink}
+                                            rewardsCheckContent={this.props.rewardsCheckContent}
+                                            termsAndConditionContent={this.props.termsAndConditionContent}/>:null}
                             		{this.props.transactionType===constantValues.CART_TRANSACTION_TYPE_CHECK_BALANCE?
                         				<OtpLogin
                                             scriptingJson={this.props.scriptingJson}
