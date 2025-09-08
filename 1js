@@ -1,1 +1,37 @@
-style={birthDate && isSpanish ?{ whiteSpace: "nowrap",  overflow: "hidden",  textOverflow: "ellipsis"}:{}}
+if (
+  accountStatus === constantValues.DUMMY_ACCOUNT ||
+  authDetailDataUtil.isDummyWithRealEmailSet()
+) {
+  // Hide login tab
+  const loginTab = this._element.querySelector('#home-tab');
+  if (loginTab) {
+    loginTab.parentElement?.classList.add('d-none'); // hide tab <li>
+    loginTab.setAttribute('aria-selected', 'false');
+    loginTab.setAttribute('tabindex', '-1');
+  }
+
+  // Deactivate login panel (#tab1)
+  const loginPanel = this._element.querySelector('#tab1');
+  if (loginPanel) {
+    loginPanel.classList.remove('active', 'show');
+    loginPanel.setAttribute('hidden', 'true');
+    loginPanel.setAttribute('tabindex', '-1');
+  }
+
+  // Show & activate Create Account tab (#profile-tab)
+  const createAccountTab = this._element.querySelector('#profile-tab');
+  if (createAccountTab) {
+    createAccountTab.parentElement?.classList.remove('d-none'); 
+    createAccountTab.classList.add('active');
+    createAccountTab.setAttribute('aria-selected', 'true');
+    createAccountTab.setAttribute('tabindex', '0');
+  }
+
+  // Activate create account panel (#tab2)
+  const createAccountPanel = this._element.querySelector('#tab2');
+  if (createAccountPanel) {
+    createAccountPanel.classList.add('active', 'show');
+    createAccountPanel.removeAttribute('hidden');
+    createAccountPanel.setAttribute('tabindex', '0');
+  }
+}
