@@ -1,37 +1,38 @@
-if (
-  accountStatus === constantValues.DUMMY_ACCOUNT ||
-  authDetailDataUtil.isDummyWithRealEmailSet()
-) {
-  // Hide login tab
-  const loginTab = this._element.querySelector('#home-tab');
-  if (loginTab) {
-    loginTab.parentElement?.classList.add('d-none'); // hide tab <li>
-    loginTab.setAttribute('aria-selected', 'false');
-    loginTab.setAttribute('tabindex', '-1');
-  }
+componentDidMount() {
+  const accountStatus = localStorage.getItem(constantValues.ACCOUNT_STATUS);
+  const isReact = getValueFromActivationCookie(constantValues.IS_REACTIVATION);
+  const flow = getValueFromActivationCookie(constantValues.FLOW);
 
-  // Deactivate login panel (#tab1)
-  const loginPanel = this._element.querySelector('#tab1');
-  if (loginPanel) {
-    loginPanel.classList.remove('active', 'show');
-    loginPanel.setAttribute('hidden', 'true');
-    loginPanel.setAttribute('tabindex', '-1');
-  }
+  const shouldForceCreateAccount =
+    (accountStatus === constantValues.DUMMY_ACCOUNT || authDetailDataUtil.isDummyWithRealEmailSet()) &&
+    (flow === constantValues.REACTIVATION_TYPE ||
+      isReact ||
+      flow === constantValues.UPGRADE_TYPE ||
+      flow === constantValues.NEW_ACTIVATION_TYPE ||
+      flow === constantValues.EXTERNAL_TYPE ||
+      flow === constantValues.INTERNAL_TYPE);
 
-  // Show & activate Create Account tab (#profile-tab)
-  const createAccountTab = this._element.querySelector('#profile-tab');
-  if (createAccountTab) {
-    createAccountTab.parentElement?.classList.remove('d-none'); 
-    createAccountTab.classList.add('active');
-    createAccountTab.setAttribute('aria-selected', 'true');
-    createAccountTab.setAttribute('tabindex', '0');
-  }
+  if (shouldForceCreateAccount) {
+    // Hide login tab (li element that contains #home-tab)
+    const loginTab = document.querySelector('#home-tab')?.parentElement;
+    loginTab?.classList.add('d-none');
 
-  // Activate create account panel (#tab2)
-  const createAccountPanel = this._element.querySelector('#tab2');
-  if (createAccountPanel) {
-    createAccountPanel.classList.add('active', 'show');
-    createAccountPanel.removeAttribute('hidden');
-    createAccountPanel.setAttribute('tabindex', '0');
+    // Deactivate login panel
+    document.querySelector('#tab1')?.classList.remove('active', 'show');
+
+    // Activate create account tab
+    const createTab = document.querySelector('#profile-tab');
+    createTab?.classList.add('active');
+    createTab?.setAttribute('aria-selected', 'true');
+
+    // Show create account panel
+    const createPanel = document.querySelector('#tab2');
+    createPanel?.classList.add('active', 'show');
+
+    // Optional: set focus to first input inside create account form
+    const focusable = createPanel?.querySelector('input, button, [tabindex]:not([tabindex="-1"])');
+    if (focusable) {
+      setTimeout(() => focusable.focus(), 0);
+    }
   }
 }
