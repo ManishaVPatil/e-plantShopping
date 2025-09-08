@@ -1,38 +1,49 @@
-componentDidMount() {
-  const accountStatus = localStorage.getItem(constantValues.ACCOUNT_STATUS);
-  const isReact = getValueFromActivationCookie(constantValues.IS_REACTIVATION);
-  const flow = getValueFromActivationCookie(constantValues.FLOW);
+class UserLogin extends Component {
+  componentDidMount() {
+    const accountStatus = localStorage.getItem(constantValues.ACCOUNT_STATUS);
+    const isReact = getValueFromActivationCookie(constantValues.IS_REACTIVATION);
+    const flow = getValueFromActivationCookie(constantValues.FLOW);
 
-  const shouldForceCreateAccount =
-    (accountStatus === constantValues.DUMMY_ACCOUNT || authDetailDataUtil.isDummyWithRealEmailSet()) &&
-    (flow === constantValues.REACTIVATION_TYPE ||
-      isReact ||
-      flow === constantValues.UPGRADE_TYPE ||
-      flow === constantValues.NEW_ACTIVATION_TYPE ||
-      flow === constantValues.EXTERNAL_TYPE ||
-      flow === constantValues.INTERNAL_TYPE);
+    const shouldShowCreateAccount =
+      (accountStatus === constantValues.DUMMY_ACCOUNT || authDetailDataUtil.isDummyWithRealEmailSet()) &&
+      (flow === constantValues.REACTIVATION_TYPE ||
+        isReact ||
+        flow === constantValues.UPGRADE_TYPE ||
+        flow === constantValues.NEW_ACTIVATION_TYPE ||
+        flow === constantValues.EXTERNAL_TYPE ||
+        flow === constantValues.INTERNAL_TYPE);
 
-  if (shouldForceCreateAccount) {
-    // Hide login tab (li element that contains #home-tab)
-    const loginTab = document.querySelector('#home-tab')?.parentElement;
-    loginTab?.classList.add('d-none');
+    if (shouldShowCreateAccount) {
+      // Hide login tab
+      const loginTab = document.querySelector('#home-tab')?.parentElement;
+      if (loginTab) {
+        loginTab.classList.add('d-none');
+      }
 
-    // Deactivate login panel
-    document.querySelector('#tab1')?.classList.remove('active', 'show');
+      // Deactivate login panel
+      const loginPanel = document.querySelector('#tab1');
+      loginPanel?.classList.remove('active', 'show');
 
-    // Activate create account tab
-    const createTab = document.querySelector('#profile-tab');
-    createTab?.classList.add('active');
-    createTab?.setAttribute('aria-selected', 'true');
+      // Activate create account tab
+      const createTab = document.querySelector('#profile-tab');
+      if (createTab) {
+        createTab.classList.add('active');
+        createTab.setAttribute('aria-selected', 'true');
+      }
 
-    // Show create account panel
-    const createPanel = document.querySelector('#tab2');
-    createPanel?.classList.add('active', 'show');
-
-    // Optional: set focus to first input inside create account form
-    const focusable = createPanel?.querySelector('input, button, [tabindex]:not([tabindex="-1"])');
-    if (focusable) {
-      setTimeout(() => focusable.focus(), 0);
+      // Show create account panel
+      const createPanel = document.querySelector('#tab2');
+      if (createPanel) {
+        createPanel.classList.add('active', 'show');
+      }
     }
+  }
+
+  render() {
+    return (
+      <React.Fragment>
+        {/* existing JSX stays the same */}
+      </React.Fragment>
+    );
   }
 }
