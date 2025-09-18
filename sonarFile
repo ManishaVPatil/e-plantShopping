@@ -1,65 +1,8 @@
-sonar.exclusions=**/store/**, store/**, **/*.spec.*, **/*.layout.*, **/mock-server/**, **/setup/**, **/*config*, **/DeviceProtectionSelector/protectionPage.module.css, Dockerfile, scripts/**, public/nsa/ui/newrelic/**, **/styledComponents.*, templates/**, **/common/components/**, **/middleware.ts, app/common/fonts/**, app/componentManager/**, app/**/layout.tsx
-sonar.coverage.exclusions=jest.setup.js, **/store/**, store/**, **/*.spec.*, **/*.layout.* , **/*config*, services/**, lighthouse/**, scripts/**, Dockerfile, public/nsa/ui/newrelic/**, **/styledComponents.*, templates/**, **/common/components/**, jest.config.js, **/tests/**, newrelic.cjs, **/middleware.ts, app/common/fonts/**, app/componentManager/**, app/**/layout.tsx
-sonar.cpd.exclusions=
 
+   Hi Team,
 
+Please clear the cache for the mfe-account on the TST environment. We are facing an issue that was not observed in the lower environments (SIT2 and SIT1).
 
-C:\Users\vinoma1\simpleMobile\onevz-value-digital-mfe-account\components\Footer\styles
+When the URL is loaded, a blank page appears and the console shows a “chunk failed” error message. However, if we reload the page, the UI loads correctly.
 
-isInputProvided = () => {
-        const { createAccountFormInfo } = this.props;
-
-        // Check if createAccountFormInfo exists and has the required fields
-        if (
-            !createAccountFormInfo ||
-            !createAccountFormInfo["emailAddress"] ||
-            !createAccountFormInfo["password"] ||
-            !createAccountFormInfo["securityPin"]
-        ) {
-            return false; // Return false if any of the fields are undefined
-        }
-        const emailValue = createAccountFormInfo["emailAddress"]?.value || '';
-        const passwordValue = createAccountFormInfo["password"]?.value || '';
-        const pinValue = createAccountFormInfo["securityPin"]?.value || '';
-        const confirmPinValue = createAccountFormInfo["securityPin1"]?.value || '';
-
-        if (createAccountFormInfo) {
-            if (this.state.consentTbvCheckbox) {
-                if (createAccountFormInfo?.password?.isValid === false) {
-                    return false;
-                }
-            }
-            if (createAccountFormInfo?.securityPin?.isValid === false || createAccountFormInfo?.securityPin1?.isValid === false ||
-                createAccountFormInfo?.securityPin?.value !== createAccountFormInfo?.securityPin1?.value
-            ) {
-                return false;
-            }
-
-        }
-
-        if (this.state.consentTbvCheckbox) {
-            return emailValue !== '' && passwordValue !== '' && pinValue !== '';
-        }
-        // Check if all fields have values
-        else { return emailValue !== '' && pinValue !== '' && confirmPinValue !== '' && pinValue === confirmPinValue; }
-    };
-
-    isAdditionalInfoProvided=()=>{
-        const {
-
-            phoneNumber
-        } = this.props?.shippingInfo || {};
-        const { zipCode: { isValid: zipValid } = { isValid: false } } =
-            this.props?.shippingAddressInfo || {};
-        const isBirthDateValid = this.state.birthDateValid;
-        const phoneLengthInvalid = phoneNumber && phoneNumber.length !== 14;
-        // Logic to decide new value for ctnBtnDisable
-        let shouldDisable =
-            !(zipValid) ||
-            phoneLengthInvalid ||
-            isBirthDateValid;
-        // Prevent infinite loop by checking if value is really changing
-        if (this.state.ctnBtnDisable !== shouldDisable) {
-            this.setState({ ctnBtnDisable: shouldDisable });
-        }
-    }
+Kindly look into this and help resolve the issue.
