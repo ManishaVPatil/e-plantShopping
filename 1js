@@ -1,13 +1,4 @@
-Hi [Manager/Team],
 
-Please find my status update for today:
+Hi Mahesh,
 
-Completed/Progress:
-	•	Worked on NSA WFM Email Verification FE changes. Changes are completed and moved, but deployment is pending due to Sonar issues.
-	•	Working on ST/TF Real Email Null PAW Login (Web) issue reported by QA. Analysis is in progress.
-
-Next Steps:
-	•	Resolve Sonar issues to proceed with deployment of NSA WFM Email Verification changes.
-	•	Continue working on the ST/TF PAW login issue until resolution.
-
-Thanks & Regards,
+Actually, Saikumar is correct. The JSON I provided is not what I’m getting from the service after your code deployment. It looks similar to the ST/TF issue, where the navigation buttons are missing. Also, in the footer, I’m getting extra elements that are not present in the JSON templates I had shared earlier.
