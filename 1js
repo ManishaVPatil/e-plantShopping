@@ -1,9 +1,13 @@
-Hi Lipishree,
+Hi [Manager/Team],
 
-We are part of the Alpha team and currently working on the following repositories:
-	•	onevz-value-digital-mfe-account
-	•	onevz-value-digital-soe-account-service
+Please find my status update for today:
 
-The request is related to merging NSA code changes during offshore hours, as currently only Mahesh has access to merge NSA PRs. Having offshore support will help us avoid delays and dependency on onsite hours.
+Completed/Progress:
+	•	Worked on NSA WFM Email Verification FE changes. Changes are completed and moved, but deployment is pending due to Sonar issues.
+	•	Working on ST/TF Real Email Null PAW Login (Web) issue reported by QA. Analysis is in progress.
 
-Please let us know if you need any additional details on the feature or access requirements.
+Next Steps:
+	•	Resolve Sonar issues to proceed with deployment of NSA WFM Email Verification changes.
+	•	Continue working on the ST/TF PAW login issue until resolution.
+
+Thanks & Regards,
