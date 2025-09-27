@@ -1,0 +1,35 @@
+import React from 'react';
+import { render } from '@testing-library/react';
+import MiniNavigationWFM from '../index'; // adjust the import according to your project structure
+
+describe('MiniNavigationWFM Component', () => {
+  const mockProps = {
+    subdomain: 'straighttalk',
+    details: {
+      ctas: [{ text: 'Apply', destination: 'https://apply.example.com', target: '_blank' }],
+      toolTip: {
+        title: 'Need Help?',
+        content: {
+          section: [
+            { title: '1', type: 'superscript', color: '#000' },
+            { title: 'Apply', type: 'normal', color: '#000' }
+          ]
+        },
+        destination: 'https://help.example.com'
+      }
+    }
+  };
+
+  it('calls window.open with correct arguments on tooltip click', () => {
+    const openSpy = jest.spyOn(window, 'open').mockImplementation(() => null);
+
+    render(<MiniNavigationWFM {...mockProps} />);
+
+
+
+    // Verify that window.open was called with the correct parameters
+    expect(openSpy).toHaveBeenCalledWith('https://help.example.com', '_blank', 'noopener,noreferrer');
+
+    openSpy.mockRestore();
+  });
+});
