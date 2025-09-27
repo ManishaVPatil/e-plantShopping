@@ -1,4 +1,2 @@
-
-Hi Mahesh,
-
-Actually, Saikumar is correct. The JSON I provided is not what I’m getting from the service after your code deployment. It looks similar to the ST/TF issue, where the navigation buttons are missing. Also, in the footer, I’m getting extra elements that are not present in the JSON templates I had shared earlier.
+border-left-color: ${p => (p.ctaExists ? p.subdomain ==='myfamilymobile' ? '#0053E2': p.subdomain==='simplemobile' ? '#8DC63F' : '#fff')};
+  
