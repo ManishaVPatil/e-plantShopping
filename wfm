@@ -1,0 +1,35 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import React from 'react';
+import { NavigationComponentProps } from '../../types';
+import { NavigationIcon, NavigationIconWrapper, NavigationContentWrapper,  NavigationMiniMobileTopCTA, NavigationMiniMobileTopCTAWrapper, NavigationMainWrapper, NavigationIconDesktop } from '../../styledComponents';
+import { brandLogo } from '../../helper/brandLogo';
+
+
+const MiniNavigationWFM = ({ subdomain, details: { ctas} }: NavigationComponentProps) => {
+
+  const logo = brandLogo?.[subdomain];
+
+  return (
+    <NavigationMainWrapper>
+      <NavigationIconDesktop>
+        <NavigationIconWrapper>
+          <NavigationIcon priority src={logo?.icon} alt={logo?.name} width={256} height={56} />
+          <NavigationIcon priority src={logo?.tooltipIcon} alt={logo?.name} width={256} height={56} />
+        </NavigationIconWrapper>
+      </NavigationIconDesktop>
+      <NavigationContentWrapper>
+        <NavigationMiniMobileTopCTAWrapper>
+          {ctas?.map((cta: any) => (
+             <NavigationMiniMobileTopCTA key={cta.text} href={cta.destination || ''} target={cta.target}>
+              {cta.text}
+            </NavigationMiniMobileTopCTA>
+          ))} 
+        </NavigationMiniMobileTopCTAWrapper>        
+      </NavigationContentWrapper>
+    </NavigationMainWrapper>
+  );
+};
+
+
+export default MiniNavigationWFM;
+
