@@ -1,2 +1,11 @@
 border-left-color: ${p => (p.ctaExists ? p.subdomain ==='myfamilymobile' ? '#0053E2': p.subdomain==='simplemobile' ? '#8DC63F' : '#fff')};
   
+border-left-color: ${p => 
+  p.ctaExists
+    ? (p.subdomain === 'myfamilymobile'
+        ? '#0053E2'
+        : p.subdomain === 'simplemobile'
+          ? '#8DC63F'
+          : '#fff')
+    : '#fff'
+};
