@@ -1,11 +1,2 @@
-border-left-color: ${p => (p.ctaExists ? p.subdomain ==='myfamilymobile' ? '#0053E2': p.subdomain==='simplemobile' ? '#8DC63F' : '#fff')};
-  
-border-left-color: ${p => 
-  p.ctaExists
-    ? (p.subdomain === 'myfamilymobile'
-        ? '#0053E2'
-        : p.subdomain === 'simplemobile'
-          ? '#8DC63F'
-          : '#fff')
-    : '#fff'
-};
+Hi @Raja Patibandla Good morning,
+i'm from kapil's team, scenario is mfe-account dit1 deployment is failing  continuously due to artifact issue, @Smita Gupta asked me to check mfe-shop docker file and update as per that in mfe-account docker file, i want to confirm like same docker file can i update in mfe-account or not? to resolve that artifact issue
