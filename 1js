@@ -1,2 +1,4 @@
-Hi @Raja Patibandla Good morning,
-i'm from kapil's team, scenario is mfe-account dit1 deployment is failing  continuously due to artifact issue, @Smita Gupta asked me to check mfe-shop docker file and update as per that in mfe-account docker file, i want to confirm like same docker file can i update in mfe-account or not? to resolve that artifact issue
+Hi @Raja Patibandla, good morning.
+I’m from Kapil’s team. The mfe-account dit1 deployment is failing continuously due to an artifact issue.
+@Smita Gupta suggested checking the mfe-shop Dockerfile and updating the mfe-account Dockerfile accordingly.
+Could you please confirm if I can proceed with updating the mfe-account Dockerfile in the same way to resolve this artifact issue?
