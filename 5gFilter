@@ -1,0 +1,273 @@
+'use client';
+import React, { useState, useRef, useEffect } from 'react';
+import AllFiltersCategoryItem from './AllFiltersCategoryItem';
+import { Section } from '@/types/plp/types';
+import {
+  ButtonGroup,
+  Scrollable,
+  TitleLockup,
+  TitleLockupTitle,
+} from '@vds/core';
+import {
+  usePlpContext,
+  usePlpDispatchContext,
+} from '@/store/contexts/plpContexts';
+import { CLEAR_ALL_FILTERS, TOGGLE_FILTER_OPTION } from '@/store/constants/plpConstants';
+import { AllFiltersProps } from '@/types/plp/interfaces';
+import { getProductInfoFromPlp, trackLinkClick } from '@/helpers/tealium';
+import { generateEventName } from '@/helpers/tealiumHelper';
+import { useIsMobile } from '@/hooks/useIsMobile';
+import { useDynamicFilters } from '@/hooks/useDynamicFilters';
+import { useForcesMobileLayout } from '@/hooks/useForcesMobileLayout';
+import { withErrorBoundary } from '@/helpers/utilities/withErrorBoundary';
+
+/** TODOs
+ *  Here dynamic cta.type causing VDS TS issues hence hardcoded
+ *  The toggle functionality for all filter category should come from prarent for mobile view, as it will remove the sort and type filters as well.
+ */
+
+const AllFilters = ({ id, modules, isSmallScreen }: AllFiltersProps) => {
+  const isMobile = useIsMobile(769, isSmallScreen);
+  const forcesMobileLayout = useForcesMobileLayout();
+
+  // Use mobile layout if either mobile detection OR forced by small height
+  const shouldUseMobileLayout = isMobile || forcesMobileLayout;
+
+  const getCategoryItems = (
+    section: Section[],
+    openedCategories: Record<string, boolean>,
+    handleToggleCategory: (id: string) => void
+  ) => {
+    const renderedFilters: Section[] = section.filter(
+      (categoryOption: Section) => categoryOption.options.length !== 0
+    );
+    return renderedFilters.map((categoryOption, index) => (
+      <AllFiltersCategoryItem
+        key={`${categoryOption.id}-${index}`}
+        {...{
+          ...categoryOption,
+          isLastItem: index === renderedFilters.length - 1,
+          filterKey: categoryOption.id,
+          isOpen: openedCategories[categoryOption.id],
+          onToggle: () => {
+            handleToggleCategory(categoryOption.id);
+            if (!openedCategories[categoryOption.id]) {
+              trackLinkClick({
+                description:
+                  'Click event on any of the selection from All filters',
+                event: `plp:all_filters:${categoryOption?.id}`,
+                linkLocation: 'all_filter_module',
+                linkType: 'button',
+              });
+            }
+          },
+        }}
+        showAllText={modules[id]?.displayText ?? 'Show All'}
+        noneSelectedText={modules[id]?.body ?? 'None Selected'}
+      />
+    ));
+  };
+
+  const { deviceType, filteredSortedProductsWithData, selectedAllFilters } =
+    usePlpContext();
+  const clearAllRef = useRef(false);
+  const dispatch = usePlpDispatchContext();
+  const {
+    content: { section = [] } = { section: [] },
+    title,
+    cta = { id: '', text: '' },
+  } = modules[id] ?? {};
+
+  // Get current filter state and apply dynamic filtering
+  const allFiltersData = modules[id];
+  const { filterSuperMap: dynamicFilterSuperMap } = useDynamicFilters(
+    allFiltersData,
+    filteredSortedProductsWithData,
+    selectedAllFilters || {}
+  );
+
+  const initialOpenedState = section.reduce(
+    (acc, curr) => {
+      acc[curr.id] = false;
+      return acc;
+    },
+    {} as Record<string, boolean>
+  );
+  const [openedCategories, setOpenedCategories] = useState(initialOpenedState);
+  const [updatedSection, setUpdatedSection] = useState(section);
+
+  const closeAllFilters = () => {
+    setOpenedCategories(
+      Object.keys(openedCategories).reduce(
+        (acc, key) => {
+          acc[key] = false;
+          return acc;
+        },
+        {} as Record<string, boolean>
+      )
+    );
+  };
+
+  useEffect(() => {
+    if (clearAllRef.current) {
+      trackLinkClick({
+        description: 'Click event of the Clear all link from All Filters module',
+        event: `plp:all_filters:${cta?.id}`,
+        linkLocation: 'all_filter_module',
+        linkType: 'link',
+        productInfo:
+          getProductInfoFromPlp(filteredSortedProductsWithData) ?? [],
+      });
+      clearAllRef.current = false;
+    }
+  }, [filteredSortedProductsWithData]);
+  const handleClearAllFilters = () => {
+    closeAllFilters();
+    dispatch({ type: CLEAR_ALL_FILTERS, deviceType });
+    window.dispatchEvent(new CustomEvent('clearChatSuggestionPills'));
+    clearAllRef.current = true;
+  };
+
+  const handleToggleCategory = (id: string) => {
+    setOpenedCategories((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
+
+  // 1. Add this ref inside the AllFilters component (near your other hooks)
+const hasAutoSelected = useRef(false);
+
+// 2. Add this useEffect block
+useEffect(() => {
+  if (typeof window === 'undefined') return;
+
+  const params = new URLSearchParams(window.location.search);
+  const wants5g = params.get('network') === '5g';
+
+  // Log initial check
+  console.log('[5G-Auto] URL Param "network=5g" detected:', wants5g);
+
+  if (wants5g && !hasAutoSelected.current && updatedSection.length > 0 && deviceType) {
+    // Target the specific IDs from your JSON structure
+    const targetCategoryId = 'features_value_all_filters';
+    const targetOptionId = '5g';
+
+    const targetCategory = updatedSection.find(sec => sec.id === targetCategoryId);
+    const targetOption = targetCategory?.options.find(opt => opt.id === targetOptionId);
+
+    console.log('[5G-Auto] Target Category Found:', !!targetCategory);
+    console.log('[5G-Auto] Target Option Found:', !!targetOption);
+
+    if (targetCategory && targetOption) {
+      // Check global context to see if it's already selected
+      const currentSelection = selectedAllFilters?.[targetCategoryId] || [];
+      const isAlreadySelected = currentSelection.some(
+        (opt: any) => opt.id === targetOptionId || opt.value === targetOption.value
+      );
+
+      console.log('[5G-Auto] Is already selected in Global Context:', isAlreadySelected);
+
+      if (!isAlreadySelected) {
+        console.log('[5G-Auto] Triggering TOGGLE_FILTER_OPTION dispatch for 5G...');
+        
+        dispatch({
+          type: TOGGLE_FILTER_OPTION,
+          payload: { 
+            filterKey: targetCategoryId, 
+            option: targetOption 
+          },
+          deviceType,
+        });
+
+        // Mark as auto-selected so it doesn't run again on state changes
+        hasAutoSelected.current = true;
+        console.log('[5G-Auto] Dispatch complete. Auto-selection locked.');
+      } else {
+        // If already selected, we still mark the ref as true to stop further checks
+        hasAutoSelected.current = true;
+      }
+    }
+  }
+}, [updatedSection, deviceType, dispatch, selectedAllFilters]);
+
+
+  return (
+    <div className='allfilters'>
+      <div className='allfilters__header'>
+        <div className='allfilters__header__title'>
+          <TitleLockup surface='lightPrimary' textAlignment='left'>
+            <TitleLockupTitle
+              key={title}
+              surface='lightPrimary'
+              size='titleXSmall'
+              bold
+              primitive='p'
+            >
+              {title}
+            </TitleLockupTitle>
+          </TitleLockup>
+        </div>
+        {cta && (
+          <ButtonGroup
+            key={cta.id}
+            buttonWidth='auto'
+            alignment='right'
+            size='large'
+            items={[
+              {
+                children: cta.text,
+                kind: 'textLink',
+                onClick: handleClearAllFilters,
+                /* eslint-disable @typescript-eslint/ban-ts-comment */
+                // @ts-expect-error
+                ['data-gtm-placement']: 'product_list',
+                ['data-gtm-cta']: generateEventName(
+                  cta.text,
+                  'spaces_to_underscores'
+                ).toLowerCase(),
+                ariaLabel: 'Clear all filters',
+              },
+            ]}
+          />
+        )}
+      </div>
+      {shouldUseMobileLayout ? (
+        <div className='allfilters__categories'>
+          {getCategoryItems(
+            updatedSection,
+            openedCategories,
+            handleToggleCategory
+          )}
+        </div>
+      ) : (
+        <Scrollable
+          maxHeight='100%'
+          overflowOrientation='vertical'
+          scrollContainerInset={{
+            bottom: '0px',
+            left: '0px',
+            right: '20px',
+            top: '0px',
+          }}
+          scrollableId='all-filters-scrollbar'
+        >
+          <div className='allfilters__scrollable'>
+            <div className='allfilters__categories'>
+              {getCategoryItems(
+                updatedSection,
+                openedCategories,
+                handleToggleCategory
+              )}
+            </div>
+          </div>
+        </Scrollable>
+      )}
+    </div>
+  );
+};
+
+export default withErrorBoundary(AllFilters, {
+  componentName: 'AllFilters',
+});
