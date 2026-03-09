@@ -1,0 +1,44 @@
+useEffect(() => {
+  if (typeof window === 'undefined') return;
+
+  const params = new URLSearchParams(window.location.search);
+  const wants5g = params.get('network') === '5g';
+
+  const targetCategoryId = 'features_value_all_filters';
+  const targetOptionId = '5g';
+
+  const targetCategory = updatedSection.find(sec => sec.id === targetCategoryId);
+  const targetOption = targetCategory?.options.find(opt => opt.id === targetOptionId);
+
+  if (!targetCategory || !targetOption || !deviceType) return;
+
+  const currentSelection = selectedAllFilters?.[targetCategoryId] || [];
+  const isAlreadySelected = currentSelection.some(
+    (opt) => opt.id === targetOptionId || opt.value === targetOption.value
+  );
+
+  // CASE 1: URL has 5g → ensure it is selected
+  if (wants5g && !isAlreadySelected) {
+    dispatch({
+      type: TOGGLE_FILTER_OPTION,
+      payload: {
+        filterKey: targetCategoryId,
+        option: targetOption,
+      },
+      deviceType,
+    });
+  }
+
+  // CASE 2: URL does NOT have 5g → ensure it is unselected
+  if (!wants5g && isAlreadySelected) {
+    dispatch({
+      type: TOGGLE_FILTER_OPTION,
+      payload: {
+        filterKey: targetCategoryId,
+        option: targetOption,
+      },
+      deviceType,
+    });
+  }
+
+}, [updatedSection, deviceType, dispatch, selectedAllFilters]);
