@@ -4,6 +4,8 @@ useEffect(() => {
   const params = new URLSearchParams(window.location.search);
   const wants5g = params.get('network') === '5g';
 
+  if (!wants5g || hasAutoSelected.current) return;
+
   const targetCategoryId = 'features_value_all_filters';
   const targetOptionId = '5g';
 
@@ -17,8 +19,7 @@ useEffect(() => {
     (opt) => opt.id === targetOptionId || opt.value === targetOption.value
   );
 
-  // CASE 1: URL has 5g → ensure it is selected
-  if (wants5g && !isAlreadySelected) {
+  if (!isAlreadySelected) {
     dispatch({
       type: TOGGLE_FILTER_OPTION,
       payload: {
@@ -29,16 +30,7 @@ useEffect(() => {
     });
   }
 
-  // CASE 2: URL does NOT have 5g → ensure it is unselected
-  if (!wants5g && isAlreadySelected) {
-    dispatch({
-      type: TOGGLE_FILTER_OPTION,
-      payload: {
-        filterKey: targetCategoryId,
-        option: targetOption,
-      },
-      deviceType,
-    });
-  }
+  // Lock auto-selection so it runs only once
+  hasAutoSelected.current = true;
 
-}, [updatedSection, deviceType, dispatch, selectedAllFilters]);
+}, [updatedSection, deviceType]);
